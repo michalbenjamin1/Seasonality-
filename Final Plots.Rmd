@@ -1,0 +1,570 @@
+---
+title: "Final Plots"
+author: "Michal Benjamin"
+date: "2024-03-12"
+output: html_document
+---
+#Bins per SEason GAD7
+```{r setup, include=FALSE}
+library(ggplot2)
+
+# Convert "gad7.startDate" to Date format if it's not already in Date format
+gad_data$gad7.startDate <- as.Date(gad_data$gad7.startDate)
+
+# Function to get the season from a date
+get_season <- function(date) {
+  month <- as.integer(format(date, "%m"))
+  season <- switch(month,
+                   "12" = "Winter", "01" = "Winter", "02" = "Winter",
+                   "03" = "Spring", "04" = "Spring", "05" = "Spring",
+                   "06" = "Summer", "07" = "Summer", "08" = "Summer",
+                   "09" = "Autumn", "10" = "Autumn", "11" = "Autumn",
+                   "Unknown")
+  return(season)
+}
+
+# Create a new column for the seasons
+gad_data$season <- sapply(gad_data$gad7.startDate, get_season)
+
+# Plot a discrete estimate graph measuring season vs GAD-7 Sum Score
+plot <- ggplot(gad_data, aes(x = season, y = gad7.sum_score)) +
+          stat_summary(fun = mean, geom = "point", size = 3, color = "skyblue") +
+          stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2) +
+          labs(x = "Season", y = "Mean GAD-7 Sum Score", title = "Mean GAD-7 Sum Score by Season") +
+          theme_minimal()
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad7_season.png", plot)
+library(dplyr)
+
+# Assuming gad_data is your data frame with the season column
+# Create season bins
+gad_data <- gad_data %>%
+  mutate(season_bins = case_when(
+    season == "Winter" ~ "Winter",
+    season == "Spring" ~ "Spring",
+    season == "Summer" ~ "Summer",
+    season == "Autumn" ~ "Autumn",
+    TRUE ~ "Unknown" # Include the Unknown category
+  ))
+
+# Calculate the number of entries and unique entries per bin
+entries_per_bin <- gad_data %>%
+  group_by(season_bins) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result
+print(entries_per_bin)
+
+#Violin plot
+library(ggplot2)
+library(dplyr)
+
+# Assuming gad_data is your data frame with the season column
+# Create season bins
+gad_data <- gad_data %>%
+  mutate(season_bins = case_when(
+    season == "Winter" ~ "Winter",
+    season == "Spring" ~ "Spring",
+    season == "Summer" ~ "Summer",
+    season == "Autumn" ~ "Autumn",
+    TRUE ~ "Unknown" # Include the Unknown category
+  ))
+
+# Plot the violin plot with average points
+plot <- ggplot(gad_data, aes(x = season_bins, y = gad7.sum_score)) +
+  geom_violin(trim = FALSE, fill = "skyblue") +
+  stat_summary(fun = mean, geom = "point", color = "black", size = 2, shape = 18, fill = "black") + # Use diamond shape
+  labs(x = "Season", y = "GAD-7 Sum Score", title = "Distribution of GAD-7 Sum Score by Season") +
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = "white"))
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad7_season_violin.png", plot)
+
+# Calculate the number of entries and unique entries per bin
+entries_per_bin <- gad_data %>%
+  group_by(season_bins) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result
+print(entries_per_bin)
+
+
+
+#Raincloud plot
+library(ggplot2)
+library(dplyr)
+library(ggdist)
+
+# Assuming gad_data is your data frame with the season column
+# Create season bins
+gad_data <- gad_data %>%
+  mutate(season_bins = case_when(
+    season == "Winter" ~ "Winter",
+    season == "Spring" ~ "Spring",
+    season == "Summer" ~ "Summer",
+    season == "Autumn" ~ "Autumn",
+    TRUE ~ "Unknown" # Include the Unknown category
+  ))
+
+# Plot the violin plot with average points
+plot <- ggplot(gad_data, aes(season_bins, gad7.sum_score)) +
+  ggdist::stat_halfeye(adjust = .5, width = .3, .width = c(0.5, 1)) + 
+  ggdist::stat_dots(side = "left", dotsize = .4, justification = 1.05, binwidth = .1)
+  labs(x = "Season", y = "GAD-7 Sum Score", title = "Distribution of GAD-7 Sum Score by Season") +
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = "white"))
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad7_season_violin.png", plot)
+
+# Calculate the number of entries and unique entries per bin
+entries_per_bin <- gad_data %>%
+  group_by(season_bins) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result
+print(entries_per_bin)
+
+#Raincloud plot
+library(ggplot2)
+library(dplyr)
+library(ggdist)
+
+# Assuming gad_data is your data frame with the season column
+# Create season bins
+gad_data <- gad_data %>%
+  mutate(season_bins = case_when(
+    season == "Winter" ~ "Winter",
+    season == "Spring" ~ "Spring",
+    season == "Summer" ~ "Summer",
+    season == "Autumn" ~ "Autumn",
+    TRUE ~ "Unknown" # Include the Unknown category
+  ))
+
+# Calculate average GAD-7 sum score per season
+average_scores <- gad_data %>%
+  group_by(season_bins) %>%
+  summarise(avg_score = mean(gad7.sum_score))
+
+# Plot the rain cloud plot with half-violin shape and dots representing averages
+plot <- ggplot(gad_data, aes(season_bins, gad7.sum_score)) +
+  geom_point(data = average_scores, aes(y = avg_score), size = 4, color = "black") + # Use average scores for points
+  ggdist::stat_halfeye(adjust = .5, width = .3, .width = c(0.5, 1)) +
+  labs(x = "Season", y = "GAD-7 Sum Score", title = "Distribution of Average GAD-7 Sum Score by Season") +
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = "white"))
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad7_season_raincloud.png", plot)
+
+# Calculate the number of entries and unique entries per bin
+entries_per_bin <- gad_data %>%
+  group_by(season_bins) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result
+print(entries_per_bin)
+
+
+
+```
+
+#Bins per SEason PHQ9
+```{r setup, include=FALSE}
+# Convert "phq9.startDate" to Date format if it's not already in Date format
+phq_data$phq9.startDate <- as.Date(phq_data$phq9.startDate)
+
+# Function to get the season from a date
+get_season <- function(date) {
+  month <- as.integer(format(date, "%m"))
+  season <- switch(month,
+                   "12" = "Winter", "01" = "Winter", "02" = "Winter",
+                   "03" = "Spring", "04" = "Spring", "05" = "Spring",
+                   "06" = "Summer", "07" = "Summer", "08" = "Summer",
+                   "09" = "Autumn", "10" = "Autumn", "11" = "Autumn",
+                   "Unknown")
+  return(season)
+}
+
+# Create a new column for the seasons
+phq_data$season <- sapply(phq_data$phq9.startDate, get_season)
+
+# Plot a discrete estimate graph measuring season vs PHQ-9 Sum Score
+plot <- ggplot(phq_data, aes(x = season, y = phq9.sum_score)) +
+          stat_summary(fun = mean, geom = "point", size = 3, color = "salmon") +
+          stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2) +
+          labs(x = "Season", y = "Mean PHQ-9 Sum Score", title = "Mean PHQ-9 Sum Score by Season") +
+          theme_minimal()
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq9_season.png", plot)
+
+# Assuming phq_data is your data frame with the season column
+# Create season bins
+phq_data <- phq_data %>%
+  mutate(season_bins = case_when(
+    season == "Winter" ~ "Winter",
+    season == "Spring" ~ "Spring",
+    season == "Summer" ~ "Summer",
+    season == "Autumn" ~ "Autumn",
+    TRUE ~ "Unknown" # Include the Unknown category
+  ))
+
+# Calculate the number of entries and unique entries per bin
+entries_per_bin <- phq_data %>%
+  group_by(season_bins) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result
+print(entries_per_bin)
+
+
+```
+
+#Bins per Month 
+```{r setup, include=FALSE}
+#Bins per SEason PHQ9
+```{r setup, include=FALSE}
+# Convert "phq9.startDate" to Date format if it's not already in Date format
+phq_data$phq9.startDate <- as.Date(phq_data$phq9.startDate)
+
+# Function to get the season from a date
+get_season <- function(date) {
+  month <- as.integer(format(date, "%m"))
+  season <- switch(month,
+                   "12" = "Winter", "01" = "Winter", "02" = "Winter",
+                   "03" = "Spring", "04" = "Spring", "05" = "Spring",
+                   "06" = "Summer", "07" = "Summer", "08" = "Summer",
+                   "09" = "Autumn", "10" = "Autumn", "11" = "Autumn",
+                   "Unknown")
+  return(season)
+}
+
+# Create a new column for the seasons
+phq_data$season <- sapply(phq_data$phq9.startDate, get_season)
+
+# Plot a discrete estimate graph measuring season vs PHQ-9 Sum Score
+plot <- ggplot(phq_data, aes(x = season, y = phq9.sum_score)) +
+          stat_summary(fun = mean, geom = "point", size = 3, color = "salmon") +
+          stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2) +
+          labs(x = "Season", y = "Mean PHQ-9 Sum Score", title = "Mean PHQ-9 Sum Score by Season") +
+          theme_minimal()
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq9_season.png", plot)
+
+# Assuming phq_data is your data frame with the season column
+# Create season bins
+phq_data <- phq_data %>%
+  mutate(season_bins = case_when(
+    season == "Winter" ~ "Winter",
+    season == "Spring" ~ "Spring",
+    season == "Summer" ~ "Summer",
+    season == "Autumn" ~ "Autumn",
+    TRUE ~ "Unknown" # Include the Unknown category
+  ))
+
+# Calculate the number of entries and unique entries per bin
+entries_per_bin <- phq_data %>%
+  group_by(season_bins) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result
+print(entries_per_bin)
+
+
+```
+```
+
+
+## Bins per fortnight
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+# Load required libraries
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(readr)
+
+# Define a function to calculate two-week periods starting from the beginning of the year
+two_week_period <- function(date) {
+  period <- floor((as.numeric(format(date, "%j")) - 1) / 14) + 1
+  return(period)
+}
+
+# Read in the PHQ data
+phq_data <- readRDS("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq_clinical_weather.rds")
+
+# Filter out rows with NA values in the phq9.startDate and phq9.sum_score columns
+filtered_phq_data <- phq_data %>%
+  filter(!is.na(phq9.startDate), !is.na(phq9.sum_score))
+
+# Extract month and day from phq9.startDate column, ignoring the year section
+filtered_phq_data$start_date <- as.Date(filtered_phq_data$phq9.startDate)
+filtered_phq_data$month_day <- format(filtered_phq_data$start_date, "%m-%d")
+
+# Add a two-week period column based on the month-day combinations
+filtered_phq_data$two_week_period <- two_week_period(as.Date(filtered_phq_data$month_day, "%m-%d"))
+
+# Calculate the average sum score for each two-week period in PHQ data
+average_phq_scores <- filtered_phq_data %>%
+  group_by(two_week_period) %>%
+  summarise(avg_sum_score_phq = mean(phq9.sum_score, na.rm = TRUE))
+
+# Read in the GAD data
+gad_data <- readRDS("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad_clinical_weather.rds")
+
+# Filter out rows with NA values in the gad7.startDate and gad7.sum_score columns
+filtered_gad_data <- gad_data %>%
+  filter(!is.na(gad7.startDate), !is.na(gad7.sum_score))
+
+# Extract month and day from gad7.startDate column, ignoring the year section
+filtered_gad_data$start_date <- as.Date(filtered_gad_data$gad7.startDate)
+filtered_gad_data$month_day <- format(filtered_gad_data$start_date, "%m-%d")
+
+# Add a two-week period column based on the month-day combinations
+filtered_gad_data$two_week_period <- two_week_period(as.Date(filtered_gad_data$month_day, "%m-%d"))
+
+# Calculate the average sum score for each two-week period in GAD data
+average_gad_scores <- filtered_gad_data %>%
+  group_by(two_week_period) %>%
+  summarise(avg_sum_score_gad = mean(gad7.sum_score, na.rm = TRUE))
+
+# Define the file path for saving the plot
+file_path <- "/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad7_phq9_average_sum_scores.png"
+
+# Plot the graph with separate lines for GAD-7 and PHQ-9
+plot <- ggplot() +
+  geom_line(data = average_gad_scores, aes(x = two_week_period, y = avg_sum_score_gad, color = "GAD-7")) +
+  geom_line(data = average_phq_scores, aes(x = two_week_period, y = avg_sum_score_phq, color = "PHQ-9")) +
+  scale_color_manual(values = c("GAD-7" = "skyblue", "PHQ-9" = "salmon")) +  # Set colors
+  labs(title = "Average GAD-7 and PHQ-9 Sum Scores Over Time",
+       x = "Two-Week Period",
+       y = "Average Sum Score",
+       color = "Scale") +
+  theme_minimal()
+
+# Save the plot
+ggsave(file_path, plot, width = 10, height = 6, units = "in")
+# Plot the graph for GAD-7
+gad_plot <- ggplot(average_gad_scores, aes(x = as.factor(two_week_period), y = avg_sum_score_gad)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Average GAD-7 Sum Scores Over Time",
+       x = "Two-Week Period",
+       y = "Average Sum Score") +
+  theme_minimal()
+
+# Plot the graph for PHQ-9
+phq_plot <- ggplot(average_phq_scores, aes(x = as.factor(two_week_period), y = avg_sum_score_phq)) +
+  geom_bar(stat = "identity", fill = "salmon") +
+  labs(title = "Average PHQ-9 Sum Scores Over Time",
+       x = "Two-Week Period",
+       y = "Average Sum Score") +
+  theme_minimal()
+
+# Define file paths
+gad_file_path <- "/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad_fortnight.png"
+phq_file_path <- "/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq_fortnight.png"
+
+# Save the plots
+ggsave(gad_file_path, gad_plot, width = 10, height = 6, units = "in")
+ggsave(phq_file_path, phq_plot, width = 10, height = 6, units = "in")
+
+```
+
+#Bins per Daylight
+```{r Clear global environment}
+remove(list = ls())
+
+#Bins per daylight
+# Create daylight bins with 2-hour intervals
+phq_data <- phq_data %>%
+  mutate(daylight_bins = cut(phq9_average_daylight_hr, breaks = c(seq(7, 17, by = 2), 24), include.lowest = TRUE))
+
+# Reorder the levels of daylight_bins in ascending numerical order
+phq_data$daylight_bins <- factor(phq_data$daylight_bins, levels = unique(phq_data$daylight_bins))
+
+# Shorten the names of the daylight bins
+levels(phq_data$daylight_bins) <- c("(7,9]", "(9,11]", "(11,13]", "(13,15]", "(15,17]", "17+")
+
+# Calculate the number of entries and unique entries per bin
+entries_per_bin_daylight <- phq_data %>%
+  group_by(daylight_bins) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result
+print(entries_per_bin_daylight)
+
+# Plot a discrete estimate graph measuring daylight vs PHQ-9 Sum Score with error bars
+plot_daylight <- ggplot(phq_data, aes(x = daylight_bins, y = phq9.sum_score)) +
+  stat_summary(fun = mean, geom = "point", size = 3, color = "salmon") +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2) +
+  labs(x = "Daylight Hours", y = "Mean PHQ-9 Sum Score", title = "Mean PHQ-9 Sum Score by Daylight Hours") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq9_daylight.png", plot_daylight)
+```
+
+#Sunshine hours
+```{r Clear global environment}
+# Load required libraries
+library(dplyr)
+library(ggplot2)
+
+#Bins per sunlight
+# Create sunlight bins with 1-hour intervals
+gad_data <- gad_data %>%
+  mutate(sun_bins = cut(gad7_average_sun_hr, breaks = c(1, 2, 3, 4, 5, 6, 7), include.lowest = TRUE))
+
+# Reorder the levels of sun_bins in ascending numerical order
+gad_data$sun_bins <- factor(gad_data$sun_bins, levels = c("(1,2]", "(2,3]", "(3,4]", "(4,5]", "(5,6]", "(6,7]"))
+
+# Calculate the number of entries and unique entries per bin
+entries_per_bin_sunlight <- gad_data %>%
+  group_by(sun_bins) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result
+print(entries_per_bin_sunlight)
+
+# Plot a discrete estimate graph measuring sunlight vs GAD-7 Sum Score with error bars
+plot_sunlight <- ggplot(gad_data, aes(x = sun_bins, y = gad7.sum_score)) +
+  stat_summary(fun = mean, geom = "point", size = 3, color = "skyblue") +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2) +
+  labs(x = "Sunlight Hours", y = "Mean GAD-7 Sum Score", title = "Mean GAD-7 Sum Score by Sunlight Hours") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad7_sunlight.png", plot_sunlight)
+
+```
+
+#Plots per wave
+```{r Clear global environment}
+library(dplyr)
+library(ggplot2)
+
+# Filter data to include only waves 1 to 18
+phq_data_filtered <- phq_data %>%
+  filter(!is.na(wave_assigned) & wave_assigned != "wave19" & wave_assigned != "wave20" & wave_assigned != "wave21") 
+
+# Convert the wave_assigned column to numeric for correct sorting
+phq_data_filtered$wave_assigned <- gsub("wave", "", phq_data_filtered$wave_assigned)
+phq_data_filtered$wave_assigned <- as.numeric(phq_data_filtered$wave_assigned)
+
+# Arrange the data by wave in ascending order
+phq_data_filtered <- phq_data_filtered %>%
+  arrange(wave_assigned)
+
+# Calculate the number of entries and unique entries per wave
+entries_per_wave <- phq_data_filtered %>%
+  group_by(wave_assigned) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result
+print(entries_per_wave)
+
+# Calculate the mean sumscore per wave with error bars
+sumscore_per_wave <- phq_data_filtered %>%
+  group_by(wave_assigned) %>%
+  summarise(mean_sumscore = mean(phq9.sum_score, na.rm = TRUE),
+            sd_sumscore = sd(phq9.sum_score, na.rm = TRUE),
+            se_sumscore = sd_sumscore / sqrt(n()))
+
+# Plot the mean sumscore per wave with error bars
+plot_wave_sumscore <- ggplot(sumscore_per_wave, aes(x = factor(wave_assigned), y = mean_sumscore)) +
+  geom_point(size = 3, color = "salmon") +
+  geom_errorbar(aes(ymin = mean_sumscore - se_sumscore, ymax = mean_sumscore + se_sumscore), 
+                width = 0.2, color = "salmon") +
+  labs(x = "Wave", y = "Mean PHQ-9 Sum Score", title = "Mean PHQ-9 Sum Score per Wave") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq9_wave_sumscore.png", plot_wave_sumscore)
+
+```
+
+#Regression winter vs lockdown
+```{r Clear global environment}
+# Assuming you have already loaded your dataset and imported necessary libraries
+# First, create a new variable indicating whether the wave occurred during lockdown or winter
+phq_data$lockdown <- ifelse(phq_data$wave_assigned %in% c("wave1", "wave12", "wave13"), "lockdown", "non-lockdown")
+phq_data$winter <- ifelse(phq_data$wave_assigned %in% c("wave10", "wave11", "wave12", "wave13"), "winter", "non-winter")
+
+# Then, calculate the average sum scores for each wave
+lockdown_avg <- aggregate(phq9.sum_score ~ lockdown, data = phq_data, FUN = mean)
+winter_avg <- aggregate(phq9.sum_score ~ winter, data = phq_data, FUN = mean)
+
+# Now, let's run a regression analysis
+model <- lm(phq9.sum_score_baseline ~ lockdown + winter, data = phq_data)
+
+# Print summary of the regression model
+summary(model)
+
+# Assuming you have already loaded your dataset and imported necessary libraries
+# First, create a new variable indicating whether the wave occurred during lockdown or winter
+gad_data$lockdown <- ifelse(gad_data$wave_assigned %in% c("wave1", "wave12", "wave13"), "lockdown", "non-lockdown")
+gad_data$winter <- ifelse(gad_data$wave_assigned %in% c("wave10", "wave11", "wave12", "wave13"), "winter", "non-winter")
+
+# Then, calculate the average sum scores for each wave
+lockdown_avg <- aggregate(gad_data$gad7.sum_score ~ gad_data$lockdown, data = gad_data, FUN = mean)
+winter_avg <- aggregate(gad_data$gad7.sum_score ~ gad_data$winter, data = gad_data, FUN = mean)
+
+# Now, let's run a regression analysis
+model <- lm(gad7.sum_score ~ lockdown + winter, data = gad_data)
+
+# Print summary of the regression model
+summary(model)
+
+
+
+
+#########
+# Load required libraries
+library(dplyr)
+
+# Assuming you have a dataset named gad_data with columns:
+# gad7_sum_score: GAD-7 sum scores
+# wave_assigned: Assigned wave for each observation
+
+# Create indicator variables for winter waves 10-13, summer lockdown (wave 1), and winter lockdown waves 12-13 based on wave_assigned
+gad_data <- gad_data %>%
+  mutate(
+    winter_waves = ifelse(wave_assigned %in% c(10, 11, 12, 13), 1, 0),
+    summer_lockdown = ifelse(wave_assigned == 1, 1, 0),
+    winter_lockdown = ifelse(wave_assigned %in% c(12, 13), 1, 0)
+  )
+
+# Perform regression analysis
+regression_model <- lm(gad7_sum_score ~ winter_waves + summer_lockdown + winter_lockdown, data = gad_data)
+
+# View summary of regression results
+summary(regression_model)
+
+# Optionally, you can test for overall significance of the model
+# using an ANOVA test
+anova(regression_model)
+
+# Optionally, you can perform additional diagnostics such as
+# checking for multicollinearity and homoscedasticity
+# For example, to check for multicollinearity:
+library(car)  # Load car package for VIF calculation
+vif(regression_model)
+
+```
+
+Clear global environment prior to initiation
+```{r Clear global environment}
+remove(list = ls())
+```
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
