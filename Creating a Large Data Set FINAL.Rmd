@@ -1,0 +1,403 @@
+---
+title: "Seasonality analysis 1"
+author: "Michal Benjamin"
+date: "2024-02-08"
+output: html_document
+---
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+Configure global options for all chunks
+```{r Setup, include=FALSE}
+# Run interactive node 
+srun -n 1 --pty bash -i
+
+knitr::opts_chunk$set(
+  echo = TRUE,
+  comment = '',
+  prompt = FALSE,
+  cache = FALSE
+  )
+```
+
+Clear global environment prior to initiation
+```{r Clear global environment}
+remove(list = ls())
+```
+
+```{r Read in file with path to ilovedata channel on teams}
+source(file = "scripts/credentials/paths.R")
+```
+
+Add the add_labelled_numeric function - used to convert character variables into numeric variables
+Add the remove_duplicates function - used to deduplicate and remove NAs from IDs
+Add the sumscores function - used to generate sumscores
+Add the package_check function - used to install and load dependencies
+Add the recode_check function - used to check for implausible values when recoding
+Add the imp_clean function - used to check variables for implausible values
+Add the cont_clean function - used to check continuous variables for implausible values
+```{r Read in functions}
+source(file = "scripts/functions/add_labelled_numeric.R")
+source(file = "scripts/functions/remove_duplicates.R")
+source(file = "scripts/functions/sumscores.R")
+source(file = "scripts/functions/package_check.R")
+source(file = "scripts/functions/recode_check.R")
+source(file = "scripts/functions/cont_clean.R")
+source(file = "scripts/functions/replace_name.R")
+```
+
+Use package_check to install and load dependencies
+Load tidyverse last
+```{r Install load dependencies}
+packages <- c("sjlabelled",
+              "Amelia",
+              "gtsummary",
+              "tidyverse")
+
+package_check(packages)
+```
+
+Creating large dataset
+#Reading in Files
+```{r read in coping files}
+gad7_baseline <- readRDS(file = file.path("seasonal_internalising_2024/data/gad7_coping_glad_edgi_nbr_clean.rds"))
+gad7_followup <- readRDS(file = file.path("seasonal_internalising_2024/data/gad_coping_followupall_clean.rds"))
+
+phq9_baseline <- readRDS(file = file.path("/seasonal_internalising_2024/phq9_coping_glad_edgi_nbr_clean.rds"))
+phq9_followup <- readRDS(file = file.path("/seasonal_internalising_2024/phq_coping_followupall_clean.rds"))
+
+```
+
+#Aligning Column Names
+
+##GAD 7 coping baseline
+```{r rewrite column names gad7 coping baseline }
+gad7_baseline.sel <- gad7_baseline %>% #new dataset with ID
+  #add_column(sample = "gad7_coping",
+             #.after = "ID") %>% # Create new sample column
+  select(
+         ID,
+         sample,
+         gad7.startDate=startDate,
+         gad7.endDate=startDate,
+         # gad7.feeling_nervous_anxious_or_on_edge_cop_glad_nbr = gad7.feeling_nervous_anxious_or_on_edge_cop,
+         # gad7.stop_control_worrying_cop_glad_nbr = gad7.control_worrying_stop_cop,
+         # gad7.worrying_too_much_about_different_things_cop_glad_nbr = gad7.worrying_too_much_about_different_things_cop,
+         # gad7.trouble_relaxing_cop_glad_nbr = gad7.trouble_relaxing_cop,
+         # gad7.hard_sit_restless_cop_glad_nbr = gad7.sit_restless_hard_cop,
+         # gad7.becoming_easily_annoyed_or_irritable_cop_glad_nbr = gad7.becoming_easily_annoyed_or_irritable_cop,
+         # gad7.awful_feeling_afraid_happen_cop_glad_nbr = gad7.awful_feeling_afraid_happen_cop,
+         # gad7.feeling_nervous_anxious_or_on_edge_cop_glad_nbr_numeric = gad7.feeling_nervous_anxious_or_on_edge_cop_numeric,
+         # gad7.stop_control_worrying_cop_glad_nbr_numeric = gad7.control_worrying_stop_cop_numeric,
+         # gad7.worrying_too_much_about_different_things_cop_glad_nbr_numeric = gad7.worrying_too_much_about_different_things_cop_numeric,
+         # gad7.trouble_relaxing_cop_glad_nbr_numeric = gad7.trouble_relaxing_cop_numeric,
+         # gad7.hard_sit_restless_cop_glad_nbr_numeric = gad7.sit_restless_hard_cop_numeric,
+         # gad7.becoming_easily_annoyed_or_irritable_cop_glad_nbr_numeric = gad7.becoming_easily_annoyed_or_irritable_cop_numeric,
+         # gad7.awful_feeling_afraid_happen_cop_glad_nbr_numeric = gad7.awful_feeling_afraid_happen_cop_numeric,
+         gad7.sum_score
+         # gad7.binary_clinical_numeric_cop_glad_nbr = gad7.binary_clinical_numeric,
+         # gad7.binary_clinical_cop_glad_nbr = gad7.binary_clinical,
+         # gad7.severity_thresholds_numeric_cop_glad_nbr = gad7.severity_thresholds_numeric,
+         # gad7.severity_thresholds_cop_glad_nbr = gad7.severity_thresholds
+         )
+
+
+skim(gad7_baseline.sel)
+
+#Add in day of year column
+gad7_baseline.sel$gad7.day_of_year_start <- as.numeric(format(as.POSIXct(gad7_baseline.sel$gad7.startDate, format = "%d/%m/%Y %H"), "%j"))
+gad7_baseline.sel$gad7.day_of_year_end <- as.numeric(format(as.POSIXct(gad7_baseline.sel$gad7.startDate, format = "%d/%m/%Y %H"), "%j"))
+
+  
+
+# Inspect colnames
+gad7_baseline.sel %>%
+colnames()
+```
+
+##GAD 7 coping Follow up
+```{r rewrite column names gad7 coping follow up}
+gad7_followup.sel <- gad7_followup %>% #new dataset with ID
+  #add_column(sample = "gad7_coping",
+             #.after = "ID") %>% # Create new sample column
+  select(
+         ID,
+         sample,
+         gad7.startDate=startDate,
+         gad7.endDate=endDate,
+         # gad7.feeling_nervous_anxious_or_on_edge_fua = gad7.feeling_nervous_anxious_or_on_edge_cop,
+         # gad7.stop_control_worrying_fua = gad7.control_worrying_stop_cop,
+         # gad7.worrying_too_much_about_different_things_fua = gad7.worrying_too_much_about_different_things_cop,
+         # gad7.trouble_relaxing_fua = gad7.trouble_relaxing_cop,
+         # gad7.hard_sit_restless_fua = gad7.sit_restless_hard_cop,
+         # gad7.becoming_easily_annoyed_or_irritable_fua = gad7.becoming_easily_annoyed_or_irritable_cop,
+         # gad7.awful_feeling_afraid_happen_fua = gad7.awful_happen_feeling_afraid_cop,
+         # gad7.difficult_daily_life_issues_fua = gad7.difficult_daily_life_issues,
+         # gad7.feeling_nervous_anxious_or_on_edge_fua_numeric = gad7.feeling_nervous_anxious_or_on_edge_cop_numeric,
+         # gad7.stop_control_worrying_fua_numeric = gad7.control_worrying_stop_cop_numeric,
+         # gad7.worrying_too_much_about_different_things_fua_numeric = gad7.worrying_too_much_about_different_things_cop_numeric,
+         # gad7.trouble_relaxing_cop_glad_fua_numeric = gad7.trouble_relaxing_cop_numeric,
+         # gad7.hard_sit_restless_fua_numeric = gad7.sit_restless_hard_cop_numeric,
+         # gad7.becoming_easily_annoyed_or_irritable_fua_numeric = gad7.becoming_easily_annoyed_or_irritable_cop_numeric,
+         # gad7.awful_feeling_afraid_happen_fua_numeric = gad7.awful_feeling_afraid_happen_cop_numeric,
+         gad7.difficult_daily_life_issues_cop_numeric,
+         gad7.sum_score,
+         # gad7.binary_clinical_numeric_cop_glad_nbr = gad7.binary_clinical_numeric,
+         # gad7.binary_clinical_cop_glad_nbr = gad7.binary_clinical,
+         # gad7.severity_thresholds_numeric_cop_glad_nbr = gad7.severity_thresholds_numeric,
+         # gad7.severity_thresholds_cop_glad_nbr = gad7.severity_thresholds
+         )
+
+#Add in day of year column
+gad7_followup.sel$gad7.day_of_year_start <- as.numeric(format(as.POSIXct(gad7_followup.sel$gad7.startDate, format = "%d/%m/%Y %H:%M:%S"), "%j"))
+gad7_followup.sel$gad7.day_of_year_end <- as.numeric(format(as.POSIXct(gad7_followup.sel$gad7.startDate, format = "%d/%m/%Y %H:%M:%S"), "%j"))
+
+# Inspect colnames
+gad7_followup.sel %>%
+colnames()
+```
+
+##PHQ 9 coping baseline
+```{r rewrite column names phq9 coping}
+phq9_baseline.sel <- phq9_baseline %>% #new dataset with ID
+  
+  select(
+         ID,# ID
+         sample,
+         phq9.startDate=startDate_cop,
+         phq9.endDate=endDate_cop,
+    
+  
+#  phq9.little_interest_or_pleasure_in_doing_things_cop= phq9.little_interest_or_pleasure_in_doing_things_cop,
+#  phq9.feeling_down_depressed_or_hopeless_cop = phq9.feeling_down_depressed_or_hopeless_cop,
+# phq9.staying_asleep_sleeping_trouble_cop = phq9.staying_asleep_sleeping_trouble_cop,
+# phq9.feeling_tired_or_having_little_energy_cop = phq9.feeling_tired_or_having_little_energy_cop,
+# phq9.poor_appetite_or_overeating_cop = phq9.poor_appetite_or_overeating_cop,
+# phq9.feeling_bad_failure_family_cop = phq9.feeling_bad_failure_family_cop,
+# phq9.trouble_concentrating_reading_newspaper_cop = phq9.trouble_concentrating_reading_newspaper_cop,
+# phq9.moving_fidgety_noticed_opposite_cop = phq9.moving_fidgety_noticed_opposite_cop,
+# phq9.fidgety_opposite_moving_restless_cop = phq9.fidgety_opposite_moving_restless_cop,
+# phq9.dead_hurting_thoughts_cop = phq9.dead_hurting_thoughts_cop,
+# phq9.problems_made_difficult_care_cop = phq9.problems_made_difficult_care_cop,
+# phq9.little_interest_or_pleasure_in_doing_things_cop_numeric = phq9.little_interest_or_pleasure_in_doing_things_cop_numeric,
+# phq9.feeling_down_depressed_or_hopeless_cop_numeric = phq9.feeling_down_depressed_or_hopeless_cop_numeric,
+# phq9.staying_asleep_sleeping_trouble_cop_numeric = phq9.staying_asleep_sleeping_trouble_cop_numeric,
+# phq9.feeling_tired_or_having_little_energy_cop_numeric = phq9.feeling_tired_or_having_little_energy_cop_numeric,
+# phq9.poor_appetite_or_overeating_cop_numeric = phq9.poor_appetite_or_overeating_cop_numeric,
+# phq9.feeling_bad_failure_family_cop_numeric = phq9.feeling_bad_failure_family_cop_numeric,
+# phq9.trouble_concentrating_reading_newspaper_cop_numeric = phq9.trouble_concentrating_reading_newspaper_cop_numeric,
+# phq9.moving_fidgety_noticed_opposite_cop_numeric = phq9.moving_fidgety_noticed_opposite_cop_numeric,
+# phq9.fidgety_opposite_moving_restless_cop_numeric = phq9.fidgety_opposite_moving_restless_cop_numeric,
+# phq9.dead_hurting_thoughts_cop_numeric = phq9.dead_hurting_thoughts_cop_numeric,
+# phq9.problems_made_difficult_care_cop_numeric = phq9.problems_made_difficult_care_cop_numeric,
+phq9.sum_score_baseline=phq9.sum_score_baseline_cop,
+phq9.sum_score_prepandemic = phq9.sum_score_prepandemic_cop
+#phq9.sum_score_prepandemic=phq9.sum_score_prepandemic_cop
+# phq9.binary_depression_cop_numeric = phq9.binary_depression_cop_numeric,
+# phq9.binary_depression_cop = phq9.binary_depression_cop,
+# phq9.severity_threshold_cop_numeric = phq9.severity_threshold_cop_numeric,
+# phq9.severity_threshold_cop = phq9.severity_threshold_cop
+  )
+
+# Assuming "startDate" is the name of the column containing the dates
+# Convert date to day of the year
+# Convert date to day of the year and create new columns
+phq9_baseline.sel$phq9.day_of_year_start <- as.numeric(format(as.POSIXct(phq9_baseline.sel$phq9.startDate, format = "%d/%m/%Y %H:%M:%S"), "%j"))
+phq9_baseline.sel$phq9.day_of_year_end <- as.numeric(format(as.POSIXct(phq9_baseline.sel$phq9.endDate, format = "%d/%m/%Y %H:%M:%S"), "%j"))
+
+  
+# Inspect colnames
+phq9_baseline.sel %>%
+colnames()
+```
+
+##PHQ 9 coping follow up
+```{r rewrite column names phq9 coping follow up}
+phq9_followup.sel <- phq9_followup %>%
+  select(
+    ID,
+    sample, 
+    phq9.startDate=startDate,
+    phq9.endDate=endDate,
+    phq9.difficult_daily_life_issues_cop_numeric,
+    phq9.sum_score = phq9.sum_score_cop
+  )
+
+# Assuming "startDate" is the name of the column containing the dates
+# Convert date to day of the year and create new columns
+phq9_followup.sel$phq9.day_of_year_start <- as.numeric(format(as.POSIXct(phq9_followup.sel$phq9.startDate, format = "%d/%m/%Y %H:%M:%S"), "%j"))
+phq9_followup.sel$phq9.day_of_year_end <- as.numeric(format(as.POSIXct(phq9_followup.sel$phq9.endDate, format = "%d/%m/%Y %H:%M:%S"), "%j"))
+
+# Inspect colnames
+phq9_followup.sel %>%
+colnames()
+```
+
+#Create wave specific datasets
+```{r wave specific datsets}
+
+
+nrow(gad7_baseline.sel)
+nrow(gad7_followup.sel)
+gad_dat<- bind_rows(gad7_baseline.sel,gad7_followup.sel)
+nrow(phq9_baseline.sel)
+nrow(phq9_followup.sel)
+phq_dat <- bind_rows( phq9_baseline.sel, phq9_followup.sel)
+
+nrow(gad_dat)
+nrow(phq_dat)
+
+# Check dat using glimpse before continuing
+gad_dat %>% glimpse()
+phq_dat %>% glimpse()
+
+# Save as RDS
+saveRDS(gad_dat, file = "/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad_dat.rds")
+
+# Save as CSV
+write.csv(gad_dat, file = "/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad_dat.csv", row.names = FALSE)
+# Save as RDS
+saveRDS(phq_dat, file = "/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq_dat.rds")
+
+# Save as CSV
+write.csv(phq_dat, file = "/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq_dat.csv", row.names = FALSE)
+
+```
+
+
+#Merging clinical Data with Demographic data
+```{r merging clinical datasets}
+
+# Load demographic data
+demographics <- readRDS(file.path("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/MDD_GAD_PRS_covariates.rds"))
+
+# Merge only the demographic data for rows that have GAD data
+merged_data_gad <- merge(x = gad_dat, y = demographics, by = "ID", all.x = TRUE)
+
+# Merge only the demographic data for rows that have PHQ data
+merged_data_phq <- merge(x = phq_dat, y = demographics, by = "ID", all.x = TRUE)
+
+# Save as RDS
+saveRDS(merged_data_gad, file = "/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/merged_data_gad.rds")
+
+# Save as CSV
+write.csv(merged_data_gad, file = "/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/merged_data_gad.csv", row.names = FALSE)
+# Save as RDS
+saveRDS(merged_data_phq, file = "/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/merged_data_phq.rds")
+
+# Save as CSV
+write.csv(merged_data_phq, file = "/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/merged_data_phq.csv", row.names = FALSE)
+
+```
+
+#Merging with weather data
+```{r pressure, echo=FALSE}
+clinical_data_gad<- readRDS("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/merged_data_gad.rds")
+clinical_data_phq<- readRDS("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/merged_data_phq.rds")
+weather_data<- readRDS("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/weather_data.rds")
+
+#Ensure date data is in the same format
+# Remove time part from date columns in clinical_data
+clinical_data_gad$gad7.startDate <- as.Date(clinical_data_gad$gad7.startDate)
+clinical_data_phq$phq9.startDate <- as.Date(clinical_data_phq$phq9.startDate)
+
+# Remove time part from date column in weather_data
+weather_data$date <- as.Date(weather_data$date)
+
+# View the modified datasets
+head(clinical_data_gad)
+head(clinical_data_phq)
+head(weather_data)
+```
+
+##GAD7 weather merge
+```{r pressure, echo=FALSE}
+library(dplyr)
+# Convert date columns to Date type and remove time information
+clinical_data_gad$gad7.startDate <- as.Date(clinical_data_gad$gad7.startDate)
+weather_data$date <- as.Date(weather_data$date)
+
+# Remove the original weather columns from merged_data
+merged_data <- clinical_data_gad[, !(names(clinical_data_gad) %in% names(weather_data))]
+
+# Left join clinical_data with weather_data
+merged_data <- left_join(merged_data, weather_data, by = c("gad7.startDate" = "date"))
+
+# Replace weather data with NA where gad7.startDate is NA
+na_indices <- is.na(merged_data$gad7.startDate)
+weather_cols <- c("average_temp", "daily_precipitation", "average_sun_hr", "average_daylight_hr")
+
+# Rename the new weather columns with gad7_ prefixes
+new_column_names <- paste0("gad7_", weather_cols)
+names(merged_data)[names(merged_data) %in% weather_cols] <- new_column_names
+
+# Find the index of gad7.day_of_year_end column
+gad7_end_index <- which(names(merged_data) == "gad7.day_of_year_end")
+
+# Define the desired order of columns
+desired_order <- c(names(merged_data)[1:gad7_end_index], new_column_names, names(merged_data)[(gad7_end_index + 1):(length(names(merged_data)) - length(new_column_names))])
+
+# Reorder the dataframe columns
+merged_data <- merged_data[, desired_order]
+
+# View the first few rows of the updated merged_data
+head(merged_data)
+
+# Save as RDS
+saveRDS(merged_data, file = "/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad_clinical_weather.rds")
+
+# Save as CSV
+write.csv(merged_data, file = "/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad_clinical_weather.csv", row.names = FALSE)
+```
+
+##PHQ9 weather merge
+```{r pressure, echo=FALSE}
+library(dplyr)
+# Convert date columns to Date type and remove time information
+clinical_data_phq$phq9.startDate <- as.Date(clinical_data_phq$phq9.startDate)
+weather_data$date <- as.Date(weather_data$date)
+
+# Remove the original weather columns from merged_data
+merged_data <- clinical_data_phq[, !(names(clinical_data_phq) %in% names(weather_data))]
+
+# Left join clinical_data with weather_data
+merged_data <- left_join(merged_data, weather_data, by = c("phq9.startDate" = "date"))
+
+# Replace weather data with NA where gad7.startDate is NA
+na_indices <- is.na(merged_data$phq9.startDate)
+weather_cols <- c("average_temp", "daily_precipitation", "average_sun_hr", "average_daylight_hr")
+
+# Rename the new weather columns with gad7_ prefixes
+new_column_names <- paste0("phq9_", weather_cols)
+names(merged_data)[names(merged_data) %in% weather_cols] <- new_column_names
+
+# Find the index of gad7.day_of_year_end column
+phq9_end_index <- which(names(merged_data) == "phq9.day_of_year_end")
+
+# Define the desired order of columns
+desired_order <- c(names(merged_data)[1:phq9_end_index], new_column_names, names(merged_data)[(phq9_end_index + 1):(length(names(merged_data)) - length(new_column_names))])
+
+# Reorder the dataframe columns
+merged_data <- merged_data[, desired_order]
+
+# View the first few rows of the updated merged_data
+head(merged_data)
+
+# Save as RDS
+saveRDS(merged_data, file = "/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq_clinical_weather.rds")
+
+# Save as CSV
+write.csv(merged_data, file = "/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq_clinical_weather.csv", row.names = FALSE)
+```
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

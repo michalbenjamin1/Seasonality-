@@ -1,0 +1,179 @@
+---
+title: "Regression analysis"
+author: "Michal Benjamin"
+date: "2024-03-29"
+output: html_document
+---
+#Rezidualizing Data- GAD7
+```{r setup, include=FALSE}
+# Load necessary libraries
+library(dplyr)
+
+# Define residualization function
+residualize_data <- function(data, outcome_var, predictors) {
+  # Remove rows with missing values
+  data <- na.omit(data[, c(outcome_var, predictors)])
+  
+  # Convert factors to character vectors
+  data <- lapply(data, function(x) if(is.factor(x)) as.character(x) else x)
+  data <- as.data.frame(data)
+  
+  # Fit a regression model
+  model <- lm(data[[outcome_var]] ~ ., data = data[, c(outcome_var, predictors)])
+  
+  # Get residuals
+  residuals <- residuals(model)
+  
+  # Add residuals to the original data
+  data$residuals <- residuals
+  
+  # Return the residualized data
+  return(data)
+}
+
+# Read in the data
+gad_data <- readRDS("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad_clinical_weather_saved.rds")
+
+# Specify outcome variable and predictors
+outcome_var <- "gad7.sum_score"
+predictors <- c("age", "sex", "wave_assigned")  # Including "wave_assigned" as a predictor
+
+# Perform residualization
+residualized_gad_data <- residualize_data(gad_data, outcome_var, predictors)
+
+# Rename the residuals column
+colnames(residualized_gad_data)[ncol(residualized_gad_data)] <- paste(outcome_var, "residuals", sep = "_")
+
+# Specify file path
+file_path <- "/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/residualized_gad_data.rds"
+
+# Save the residualized data as an RDS file
+saveRDS(residualized_gad_data, file_path)
+
+
+```
+
+## Residualizing data- PHQ9
+
+```{r cars}
+# Load necessary libraries
+library(dplyr)
+
+# Define residualization function
+residualize_data <- function(data, outcome_var, predictors) {
+  # Remove rows with missing values
+  data <- na.omit(data[, c(outcome_var, predictors)])
+  
+  # Convert factors to character vectors
+  data <- lapply(data, function(x) if(is.factor(x)) as.character(x) else x)
+  data <- as.data.frame(data)
+  
+  # Fit a regression model
+  model <- lm(data[[outcome_var]] ~ ., data = data[, c(outcome_var, predictors)])
+  
+  # Get residuals
+  residuals <- residuals(model)
+  
+  # Add residuals to the original data
+  data$residuals <- residuals
+  
+  # Return the residualized data
+  return(data)
+}
+
+# Read in the data
+phq_data <- readRDS("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq_clinical_weather_saved.rds")
+
+# Specify outcome variable and predictors
+outcome_var <- "phq9.sum_score"
+predictors <- c("age", "sex")
+
+# Perform residualization
+residualized_phq_data <- residualize_data(phq_data, outcome_var, predictors)
+
+# Rename the residuals column
+colnames(residualized_phq_data)[ncol(residualized_phq_data)] <- paste(outcome_var, "residuals", sep = "_")
+
+# Specify file path
+file_path <- "/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/residualized_phq_data.rds"
+
+# Save the residualized data as an RDS file
+saveRDS(residualized_phq_data, file_path)
+
+```
+
+## Regression Model
+
+
+
+```{r pressure, echo=FALSE}
+#Regression winter vs lockdown
+```{r Clear global environment}
+# Assuming you have already loaded your dataset and imported necessary libraries
+# First, create a new variable indicating whether the wave occurred during lockdown or winter
+residualized_phq_data$lockdown <- ifelse(phq_data$wave_assigned %in% c("wave1", "wave12", "wave13"), "lockdown", "non-lockdown")
+residualized_phq_data$winter <- ifelse(phq_data$wave_assigned %in% c("wave10", "wave11", "wave12", "wave13"), "winter", "non-winter")
+
+# Then, calculate the average sum scores for each wave
+lockdown_avg <- aggregate(phq9.sum_score ~ lockdown, data = phq_data, FUN = mean)
+winter_avg <- aggregate(phq9.sum_score ~ winter, data = phq_data, FUN = mean)
+
+# Now, let's run a regression analysis
+model <- lm(phq9.sum_score_baseline ~ lockdown + winter, data = phq_data)
+
+# Print summary of the regression model
+summary(model)
+
+# Assuming you have already loaded your dataset and imported necessary libraries
+# First, create a new variable indicating whether the wave occurred during lockdown or winter
+residualized_gad_data$lockdown <- ifelse(gad_data$wave_assigned %in% c("wave1", "wave12", "wave13"), "lockdown", "non-lockdown")
+residualized_gad_data$winter <- ifelse(gad_data$wave_assigned %in% c("wave10", "wave11", "wave12", "wave13"), "winter", "non-winter")
+
+# Then, calculate the average sum scores for each wave
+lockdown_avg <- aggregate(gad_data$gad7.sum_score ~ gad_data$lockdown, data = gad_data, FUN = mean)
+winter_avg <- aggregate(gad_data$gad7.sum_score ~ gad_data$winter, data = gad_data, FUN = mean)
+
+# Now, let's run a regression analysis
+model <- lm(gad7.sum_score ~ lockdown + winter, data = gad_data)
+
+# Print summary of the regression model
+summary(model)
+
+
+
+
+#########
+# Load required libraries
+library(dplyr)
+
+# Assuming you have a dataset named gad_data with columns:
+# gad7_sum_score: GAD-7 sum scores
+# wave_assigned: Assigned wave for each observation
+
+# Create indicator variables for winter waves 10-13, summer lockdown (wave 1), and winter lockdown waves 12-13 based on wave_assigned
+gad_data <- gad_data %>%
+  mutate(
+    winter_waves = ifelse(wave_assigned %in% c(10, 11, 12, 13), 1, 0),
+    summer_lockdown = ifelse(wave_assigned == 1, 1, 0),
+    winter_lockdown = ifelse(wave_assigned %in% c(12, 13), 1, 0)
+  )
+
+# Perform regression analysis
+regression_model <- lm(gad7_sum_score ~ winter_waves + summer_lockdown + winter_lockdown, data = gad_data)
+
+# View summary of regression results
+summary(regression_model)
+
+# Optionally, you can test for overall significance of the model
+# using an ANOVA test
+anova(regression_model)
+
+# Optionally, you can perform additional diagnostics such as
+# checking for multicollinearity and homoscedasticity
+# For example, to check for multicollinearity:
+library(car)  # Load car package for VIF calculation
+vif(regression_model)
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

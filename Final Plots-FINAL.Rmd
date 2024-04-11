@@ -1,0 +1,1277 @@
+---
+title: "Final Plots"
+author: "Michal Benjamin"
+date: "2024-03-12"
+output: html_document
+---
+#Bins per SEason GAD7
+```{r setup, include=FALSE}
+library(ggplot2)
+gad_data <- readRDS("/seasonal_internalising_2024/gad_clinical_weather_with_season.rds")
+phq_data <- readRDS("/seasonal_internalising_2024/phq_clinical_weather_with_season.rds")
+# Convert "gad7.startDate" to Date format if it's not already in Date format
+gad_data$gad7.startDate <- as.Date(gad_data$gad7.startDate)
+
+# Function to get the season from a date
+get_season <- function(date) {
+  month <- as.integer(format(date, "%m"))
+  season <- switch(month,
+                   "12" = "Winter", "01" = "Winter", "02" = "Winter",
+                   "03" = "Spring", "04" = "Spring", "05" = "Spring",
+                   "06" = "Summer", "07" = "Summer", "08" = "Summer",
+                   "09" = "Autumn", "10" = "Autumn", "11" = "Autumn",
+                   "Unknown")
+  return(season)
+}
+
+# Create a new column for the seasons
+gad_data$season <- sapply(gad_data$gad7.startDate, get_season)
+
+# Reorder season data
+gad_data$season <- factor(gad_data$season, levels = c("Spring", "Summer", "Autumn", "Winter"))
+
+# Plot a discrete estimate graph measuring season vs GAD-7 Sum Score
+plot <- ggplot(gad_data, aes(x = season, y = gad7.sum_score)) +
+          stat_summary(fun = mean, geom = "point", size = 3, color = "skyblue") +
+          stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2) +
+          labs(x = "Season", y = "Mean GAD-7 Sum Score", title = "Mean GAD-7 Sum Score by Season") +
+          theme_minimal() +
+          theme(
+            panel.background = element_rect(fill = "white"),
+            panel.grid.major = element_line(color = "gray"),  # Add major gridlines
+            panel.grid.minor = element_line(color = "lightgray"),  # Add minor gridlines
+            plot.background = element_rect(fill = "white"),  # Set plot area background to white
+            axis.line = element_line(color = "black"),  # Add axis lines
+            axis.text = element_text(color = "black"),  # Set axis text color to black
+            axis.title = element_text(color = "black")  # Set axis title color to black
+          )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad7_season.png", plot)
+
+library(dplyr)
+
+# Assuming gad_data is your data frame with the season column
+# Create season bins
+gad_data <- gad_data %>%
+  mutate(season_bins = case_when(
+    season == "Winter" ~ "Winter",
+    season == "Spring" ~ "Spring",
+    season == "Summer" ~ "Summer",
+    season == "Autumn" ~ "Autumn",
+    TRUE ~ "Unknown" # Include the Unknown category
+  ))
+
+# Calculate the number of entries and unique entries per bin
+entries_per_bin <- gad_data %>%
+  group_by(season_bins) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result
+print(entries_per_bin)
+
+#Violin plot
+library(ggplot2)
+library(dplyr)
+
+# Assuming gad_data is your data frame with the season column
+# Create season bins
+gad_data <- gad_data %>%
+  mutate(season_bins = case_when(
+    season == "Winter" ~ "Winter",
+    season == "Spring" ~ "Spring",
+    season == "Summer" ~ "Summer",
+    season == "Autumn" ~ "Autumn",
+    TRUE ~ "Unknown" # Include the Unknown category
+  ))
+
+# Plot the violin plot with average points
+plot <- ggplot(gad_data, aes(x = season_bins, y = gad7.sum_score)) +
+  geom_violin(trim = FALSE, fill = "skyblue") +
+  stat_summary(fun = mean, geom = "point", color = "black", size = 2, shape = 18, fill = "black") + # Use diamond shape
+  labs(x = "Season", y = "GAD-7 Sum Score", title = "Distribution of GAD-7 Sum Score by Season") +
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = "white"))
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad7_season_violin.png", plot)
+
+# Calculate the number of entries and unique entries per bin
+entries_per_bin <- gad_data %>%
+  group_by(season_bins) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result
+print(entries_per_bin)
+
+
+# Raincloud plot
+# Create season bins
+gad_data <- gad_data %>%
+  mutate(season_bins = case_when(
+    season == "Spring" ~ "Spring",
+    season == "Summer" ~ "Summer",
+    season == "Autumn" ~ "Autumn",
+    season == "Winter" ~ "Winter",
+    TRUE ~ "Unknown" # Include the Unknown category
+  ))
+
+# Reorder season bins
+gad_data$season_bins <- factor(gad_data$season_bins, levels = c("Spring", "Summer", "Autumn", "Winter", "Unknown"))
+
+# Define different shades of blue for each season
+season_colors <- c("Spring" = "#1f77b4",   # Spring - blue
+                   "Summer" = "#aec7e8",   # Summer - light blue
+                   "Autumn" = "#3182bd",   # Autumn - dark blue
+                   "Winter" = "#6baed6")   # Winter - medium blue
+
+# Count the number of entries and unique entries for each season
+entries_per_bin <- gad_data %>%
+  group_by(season_bins) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Plot the rain cloud plot with half-violin shape
+plot <- ggplot(gad_data, aes(x = season_bins, y = gad7.sum_score, fill = season_bins)) +
+  geom_half_boxplot(center = TRUE, errorbar.draw = FALSE, width = 0.5, nudge = 0.02, outlier.shape = NA) +
+  geom_half_violin(side = "r", nudge = 0.02) +
+  scale_fill_manual(values = season_colors) +  # Use defined colors
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white")
+  ) +
+  labs(
+    title = "Sum Score per Season",
+    x = "Season",
+    y = "GAD-7 Sum Score"
+  ) +
+  geom_text(data = entries_per_bin, aes(x = season_bins, y = -1.5, 
+                                       label = paste("Count:", entries, "\nUnique:", unique_entries)), 
+            vjust = 0.5, size = 3)
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad7_season_raincloud.png", plot, width = 8, height = 6)
+
+
+```
+
+#Bins per SEason PHQ9
+```{r setup, include=FALSE}
+# Convert "phq9.startDate" to Date format if it's not already in Date format
+phq_data$phq9.startDate <- as.Date(phq_data$phq9.startDate)
+
+# Function to get the season from a date
+get_season <- function(date) {
+  month <- as.integer(format(date, "%m"))
+  season <- switch(month,
+                   "12" = "Winter", "01" = "Winter", "02" = "Winter",
+                   "03" = "Spring", "04" = "Spring", "05" = "Spring",
+                   "06" = "Summer", "07" = "Summer", "08" = "Summer",
+                   "09" = "Autumn", "10" = "Autumn", "11" = "Autumn",
+                   "Unknown")
+  return(season)
+}
+
+# Create a new column for the seasons
+phq_data$season <- sapply(phq_data$phq9.startDate, get_season)
+
+# Reorder season data
+phq_data$season <- factor(phq_data$season, levels = c("Spring", "Summer", "Winter", "Autumn"))
+
+# Reorder season data
+phq_data$season <- factor(phq_data$season, levels = c("Spring", "Summer", "Autumn", "Winter"))
+
+# Plot a discrete estimate graph measuring season vs PHQ-9 Sum Score
+plot <- ggplot(phq_data, aes(x = season, y = phq9.sum_score)) +
+          stat_summary(fun = mean, geom = "point", size = 3, color = "salmon") +
+          stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2) +
+          labs(x = "Season", y = "Mean PHQ-9 Sum Score", title = "Mean PHQ-9 Sum Score by Season") +
+          theme_minimal() +
+          theme(
+            panel.background = element_rect(fill = "white"),
+            panel.grid.major = element_line(color = "gray"),  # Add major gridlines
+            panel.grid.minor = element_line(color = "lightgray"),  # Add minor gridlines
+            plot.background = element_rect(fill = "white"),  # Set plot area background to white
+            axis.line = element_line(color = "black"),  # Add axis lines
+            axis.text = element_text(color = "black"),  # Set axis text color to black
+            axis.title = element_text(color = "black")  # Set axis title color to black
+          )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq9_season.png", plot)
+
+
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq9_season.png", plot)
+
+# Raincloud plot
+# Create season bins
+phq_data <- phq_data %>%
+  mutate(season_bins = case_when(
+    season == "Winter" ~ "Winter",
+    season == "Spring" ~ "Spring",
+    season == "Summer" ~ "Summer",
+    season == "Autumn" ~ "Autumn",
+    TRUE ~ "Unknown" # Include the Unknown category
+  ))
+
+# Calculate the number of entries and unique entries per bin
+entries_per_bin <- phq_data %>%
+  group_by(season_bins) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result
+print(entries_per_bin)
+
+# Assuming phq_data is your data frame with the season column
+# Create season bins
+phq_data <- phq_data %>%
+  mutate(season_bins = case_when(
+    season == "Spring" ~ "Spring",
+    season == "Summer" ~ "Summer",
+    season == "Autumn" ~ "Autumn",
+    season == "Winter" ~ "Winter",
+    TRUE ~ "Unknown" # Include the Unknown category
+  ))
+
+# Reorder season bins
+phq_data$season_bins <- factor(phq_data$season_bins, levels = c("Spring", "Summer", "Autumn", "Winter", "Unknown"))
+
+# Define different shades of red for each season
+season_colors <- c("Spring" = "#e41a1c",   # Spring - red
+                   "Summer" = "#fb9a99",   # Summer - light red
+                   "Autumn" = "#a50f15",   # Autumn - dark red
+                   "Winter" = "#df5353")   # Winter - medium red
+
+# Count the number of entries and unique entries for each season
+entries_per_bin <- phq_data %>%
+  group_by(season_bins) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Plot the rain cloud plot with half-violin shape
+plot <- ggplot(phq_data, aes(x = season_bins, y = phq9.sum_score, fill = season_bins)) +
+  geom_half_boxplot(center = TRUE, errorbar.draw = FALSE, width = 0.5, nudge = 0.02, outlier.shape = NA) +
+  geom_half_violin(side = "r", nudge = 0.02) +
+  scale_fill_manual(values = season_colors) +  # Use defined colors
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white")
+  ) +
+  labs(
+    title = "Sum Score per Season",
+    x = "Season",
+    y = "PHQ-9 Sum Score"
+  ) +
+  geom_text(data = entries_per_bin, aes(x = season_bins, y = -1.5, 
+                                       label = paste("Count:", entries, "\nUnique:", unique_entries)), 
+            vjust = 0.5, size = 3)
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq9_season_raincloud.png", plot, width = 8, height = 6)
+
+```
+
+#Bins per Month GAD7
+```{r setup, include=FALSE}
+#Bins per SEason PHQ9
+```{r setup, include=FALSE}
+# Function to get the month from a date
+get_month <- function(date) {
+  month <- format(date, "%b")  # Get the abbreviated month name
+  return(month)
+}
+
+# Create a new column for the months
+gad_data$month <- sapply(gad_data$gad7.startDate, get_month)
+
+# Plot a discrete estimate graph measuring month vs GAD-7 Sum Score
+plot <- ggplot(gad_data, aes(x = month, y = gad7.sum_score)) +
+          stat_summary(fun = mean, geom = "point", size = 3, color = "skyblue") +
+          stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2) +
+          labs(x = "Month", y = "Mean GAD-7 Sum Score", title = "Mean GAD-7 Sum Score by Month") +
+          scale_x_discrete(labels = function(x) substr(x, 1, 3)) +  # Display only the first three letters of the month
+          theme_minimal() +
+          theme(
+            plot.background = element_rect(fill = "white"),
+            panel.background = element_rect(fill = "white"),
+            panel.grid.major = element_line(color = "gray", size = 0.5),  # Major gridlines
+            panel.grid.minor = element_line(color = "gray", size = 0.2),  # Minor gridlines
+            axis.line = element_line(color = "black"),
+            axis.text = element_text(color = "black"),
+            axis.title = element_text(color = "black"),
+            legend.background = element_rect(fill = "white"),
+            legend.title = element_text(color = "black"),
+            legend.text = element_text(color = "black")
+          )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad7_month.png", plot, width = 7, height = 7)
+
+
+
+# Assuming phq_data is your data frame with the season column
+# Create season bins
+phq_data <- phq_data %>%
+  mutate(season_bins = case_when(
+    season == "Winter" ~ "Winter",
+    season == "Spring" ~ "Spring",
+    season == "Summer" ~ "Summer",
+    season == "Autumn" ~ "Autumn",
+    TRUE ~ "Unknown" # Include the Unknown category
+  ))
+
+# Calculate the number of entries and unique entries per bin
+entries_per_bin <- phq_data %>%
+  group_by(season_bins) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result
+print(entries_per_bin)
+
+# Assuming gad_data is your data frame with the date column
+# Create season bins (each bin represents a month)
+gad_data <- gad_data %>%
+  mutate(season_bins = format(gad_data$gad7.startDate, "%b"))  # Using %b for shortened month names
+
+# Define colors for each season
+season_colors <- c("Jan" = "#6baed6",   # January - medium blue
+                   "Feb" = "#6baed6",   # February - medium blue
+                   "Mar" = "#1f77b4",   # March - blue
+                   "Apr" = "#1f77b4",   # April - blue
+                   "May" = "#1f77b4",   # May - blue
+                   "Jun" = "#aec7e8",   # June - light blue
+                   "Jul" = "#aec7e8",   # July - light blue
+                   "Aug" = "#aec7e8",   # August - light blue
+                   "Sep" = "#3182bd",   # September - dark blue
+                   "Oct" = "#3182bd",   # October - dark blue
+                   "Nov" = "#3182bd",   # November - dark blue
+                   "Dec" = "#6baed6")   # December - medium blue
+
+# Convert season_bins to factor with appropriate levels
+gad_data$season_bins <- factor(gad_data$season_bins, 
+                               levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+
+# Count the number of entries for each month
+entries_per_bin <- gad_data %>%
+  group_by(season_bins) %>%
+  summarise(entries = n())
+
+# Plot the rain cloud plot with half-violin shape
+plot <- ggplot(gad_data, aes(x = season_bins, y = gad7.sum_score, fill = season_bins)) +
+  geom_half_boxplot(center = TRUE, errorbar.draw = FALSE, width = 0.5, nudge = 0.02, outlier.shape = NA) +
+  geom_half_violin(side = "r", nudge = 0.02) +
+  scale_fill_manual(values = season_colors) +  # Use defined colors
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    axis.text.x = element_text(size = 8),  # Adjusting text size for x-axis
+    axis.text.y = element_text(size = 8)   # Adjusting text size for y-axis
+  ) +
+  labs(
+    title = "Sum Score per Month",
+    x = "Month",
+    y = "GAD-7 Sum Score"
+  )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad7_month_raincloud.png", plot, width = 8, height = 6)
+
+
+```
+#Bins per Month PHQ9
+```{r setup, include=FALSE}
+#Bins per Month PHQ9
+```{r setup, include=FALSE}
+# Ensure phq9.startDate is in Date format
+phq_data$phq9.startDate <- as.Date(phq_data$phq9.startDate)
+
+# Create a new column for the months
+phq_data$month <- format(phq_data$phq9.startDate, "%b")
+
+# Ensure months are ordered chronologically
+phq_data$month <- factor(phq_data$month, levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"), ordered = TRUE)
+
+# Plot a discrete estimate graph measuring month vs PHQ-9 Sum Score
+plot <- ggplot(phq_data, aes(x = month, y = phq9.sum_score)) +
+          stat_summary(fun = mean, geom = "point", size = 3, color = "salmon") +
+          stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2) +
+          labs(x = "Month", y = "Mean PHQ-9 Sum Score", title = "Mean PHQ-9 Sum Score by Month") +
+          theme_minimal() +
+          theme(
+            plot.background = element_rect(fill = "white"),
+            panel.background = element_rect(fill = "white"),
+            panel.grid.major = element_line(color = "gray", size = 0.5),  # Major gridlines
+            panel.grid.minor = element_line(color = "gray", size = 0.2),  # Minor gridlines
+            axis.line = element_line(color = "black"),
+            axis.text = element_text(color = "black"),
+            axis.title = element_text(color = "black"),
+            legend.background = element_rect(fill = "white"),
+            legend.title = element_text(color = "black"),
+            legend.text = element_text(color = "black")
+          )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq9_month.png", plot, width = 7, height = 7)
+
+
+
+#Raincloud plot
+# Assuming phq_data is your data frame with the date column
+# Create season bins (each bin represents a month)
+phq_data <- phq_data %>%
+  mutate(season_bins = format(phq_data$phq9.startDate, "%b"))  # Using %b for shortened month names
+
+# Define colors for each season
+season_colors <- c("Jan" = "#df5353",   # January - medium red
+                   "Feb" = "#df5353",   # February - medium red
+                   "Mar" = "#e41a1c",   # March - red
+                   "Apr" = "#e41a1c",   # April - red
+                   "May" = "#e41a1c",   # May - red
+                   "Jun" = "#fb9a99",   # June - light red
+                   "Jul" = "#fb9a99",   # July - light red
+                   "Aug" = "#fb9a99",   # August - light red
+                   "Sep" = "#a50f15",   # September - dark red
+                   "Oct" = "#a50f15",   # October - dark red
+                   "Nov" = "#a50f15",   # November - dark red
+                   "Dec" = "#df5353")   # December - medium red
+
+# Convert season_bins to factor with appropriate levels
+phq_data$season_bins <- factor(phq_data$season_bins, 
+                               levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+
+# Count the number of entries for each month
+entries_per_bin <- phq_data %>%
+  group_by(season_bins) %>%
+  summarise(entries = n())
+
+# Plot the rain cloud plot with half-violin shape
+plot <- ggplot(phq_data, aes(x = season_bins, y = phq9.sum_score, fill = season_bins)) +
+  geom_half_boxplot(center = TRUE, errorbar.draw = FALSE, width = 0.5, nudge = 0.02, outlier.shape = NA) +
+  geom_half_violin(side = "r", nudge = 0.02) +
+  scale_fill_manual(values = season_colors) +  # Use defined colors
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    axis.text.x = element_text(size = 8),  # Adjusting text size for x-axis
+    axis.text.y = element_text(size = 8)   # Adjusting text size for y-axis
+  ) +
+  labs(
+    title = "Sum Score per Month",
+    x = "Month",
+    y = "PHQ-9 Sum Score"
+  )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq9_month_raincloud.png", plot, width = 8, height = 6)
+
+
+```
+```
+#Bins per Daylight GAD7
+```{r Clear global environment}
+remove(list = ls())
+#Bins per daylight
+# Create daylight bins with 2-hour intervals
+gad_data <- gad_data %>%
+  mutate(daylight_bins = cut(gad7_average_daylight_hr, breaks = c(seq(7, 17, by = 2), 24), include.lowest = TRUE))
+
+# Reorder the levels of daylight_bins in ascending numerical order
+gad_data$daylight_bins <- factor(gad_data$daylight_bins, levels = unique(gad_data$daylight_bins))
+
+# Shorten the names of the daylight bins
+levels(gad_data$daylight_bins) <- c("(7,9]", "(9,11]", "(11,13]", "(13,15]", "(15,17]", "17+")
+
+# Calculate the number of entries and unique entries per bin
+entries_per_bin_daylight <- gad_data %>%
+  group_by(daylight_bins) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result
+print(entries_per_bin_daylight)
+
+# Plot a discrete estimate graph measuring daylight vs PHQ-9 Sum Score with error bars
+plot_daylight <- ggplot(phq_data, aes(x = daylight_bins, y = gad7.sum_score)) +
+  stat_summary(fun = mean, geom = "point", size = 3, color = "skyblue") +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2) +
+  labs(x = "Daylight Hours", y = "Mean PHQ-9 Sum Score", title = "Mean PHQ-9 Sum Score by Daylight Hours") +
+  theme_light() +  # Change theme to light theme
+  theme(panel.background = element_rect(fill = "white"),  # Set panel background to white
+        axis.line = element_line(color = "black"),  # Set axis line color to black
+        axis.text = element_text(color = "black"),  # Set axis text color to black
+        axis.title = element_text(color = "black"))  # Set axis title color to black
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/pgad7_daylight.png", plot_daylight)
+
+
+#Raincloud plot
+library(ggplot2)
+
+# Define shades of blue for each bin
+blue_shades <- c("(7,9]" = "#6baed6",   # January - medium blue
+                 "(9,11]" = "#6baed6",   # February - medium blue
+                 "(11,13]" = "#1f77b4",   # March - blue
+                 "(13,15]" = "#1f77b4",   # April - blue
+                 "(15,17]" = "#1f77b4",   # May - blue
+                 "17+" = "#aec7e8")   # December - medium blue
+
+# Plot the rain cloud plot with half-violin shape
+plot_daylight <- ggplot(gad_data, aes(x = daylight_bins, y = gad7.sum_score, fill = daylight_bins)) +
+  geom_half_boxplot(width = 0.5, outlier.shape = NA, position = position_dodge(width = 0.6)) +  # Boxplot with adjusted dodge position
+  geom_half_violin(position = position_dodge(width = 0.6), width = -0.5) +  # Half-violin with adjusted dodge position and flipped width
+  scale_fill_manual(values = blue_shades) +  # Assign different shades of blue
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    axis.text.x = element_text(size = 8),  # Adjusting text size for x-axis
+    axis.text.y = element_text(size = 8)   # Adjusting text size for y-axis
+  ) +
+  labs(
+    title = "Sum Score per Daylight Hours",
+    x = "Daylight Hours",
+    y = "GAD-7 Sum Score"
+  )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad_daylight_raincloud.png", plot_daylight, width = 8, height = 6)
+
+
+```
+
+
+
+#Bins per Daylight PHQ9
+```{r Clear global environment}
+remove(list = ls())
+library(dplyr)
+library(ggplot2)
+
+# Filter data to include only waves 1 to 18
+phq_data_filtered <- phq_data %>%
+  filter(!is.na(wave_assigned) & wave_assigned != "wave19" & wave_assigned != "wave20" & wave_assigned != "wave21") 
+
+# Convert the wave_assigned column to numeric for correct sorting
+phq_data_filtered$wave_assigned <- gsub("wave", "", phq_data_filtered$wave_assigned)
+phq_data_filtered$wave_assigned <- as.numeric(phq_data_filtered$wave_assigned)
+
+# Arrange the data by wave in ascending order
+phq_data_filtered <- phq_data_filtered %>%
+  arrange(wave_assigned)
+
+# Calculate the number of entries and unique entries per wave
+entries_per_wave <- phq_data_filtered %>%
+  group_by(wave_assigned) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result
+print(entries_per_wave)
+
+# Calculate the mean sumscore per wave with error bars
+sumscore_per_wave <- phq_data_filtered %>%
+  group_by(wave_assigned) %>%
+  summarise(mean_sumscore = mean(phq9.sum_score, na.rm = TRUE),
+            sd_sumscore = sd(phq9.sum_score, na.rm = TRUE),
+            se_sumscore = sd_sumscore / sqrt(n()))
+
+# Plot the mean sumscore per wave with error bars
+plot_wave_sumscore <- ggplot(sumscore_per_wave, aes(x = factor(wave_assigned), y = mean_sumscore)) +
+  geom_point(size = 3, color = "salmon") +  # Change point color to salmon
+  geom_errorbar(aes(ymin = mean_sumscore - se_sumscore, ymax = mean_sumscore + se_sumscore), 
+                width = 0.2, color = "black") +  # Change error bars to black
+  labs(x = "Wave", y = "Mean PHQ-9 Sum Score", title = "Mean PHQ-9 Sum Score per Wave") +
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_line(color = "gray", size = 0.5),  # Major gridlines
+    panel.grid.minor = element_line(color = "gray", size = 0.2),  # Minor gridlines
+    axis.line = element_line(color = "black"),
+    axis.text = element_text(color = "black"),
+    axis.title = element_text(color = "black")
+  )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq9_wave_sumscore.png", plot_wave_sumscore)
+
+#Raincloud plot
+library(ggplot2)
+
+# Define shades of red for each bin
+red_shades <- c("#FF0000", "#FF3333", "#FF6666", "#FF9999", "#FFCCCC", "#FF0000")
+
+# Plot the rain cloud plot with half-violin shape
+plot_daylight <- ggplot(phq_data, aes(x = daylight_bins, y = phq9.sum_score, fill = as.factor(daylight_bins))) +
+  geom_half_boxplot(width = 0.5, outlier.shape = NA, position = position_dodge(width = 0.6)) +  # Boxplot with adjusted dodge position
+  geom_half_violin(alpha = 0.7, position = position_dodge(width = 0.6), width = -0.5) +  # Half-violin with adjusted dodge position and flipped width
+  scale_fill_manual(values = red_shades) +  # Assign different shades of red
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    axis.text.x = element_text(size = 8),  # Adjusting text size for x-axis
+    axis.text.y = element_text(size = 8)   # Adjusting text size for y-axis
+  ) +
+  labs(
+    title = "Sum Score per Daylight Hours",
+    x = "Daylight Hours",
+    y = "PHQ-9 Sum Score"
+  )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq9_daylight_raincloud.png", plot_daylight, width = 8, height = 6)
+
+
+```
+
+#Sunshine hours- GAD7
+```{r Clear global environment}
+# Load required libraries
+library(dplyr)
+library(ggplot2)
+
+#Bins per sunlight
+# Create sunlight bins with 1-hour intervals
+gad_data <- gad_data %>%
+  mutate(sun_bins = cut(gad7_average_sun_hr, breaks = c(1, 2, 3, 4, 5, 6, 7), include.lowest = TRUE))
+
+# Reorder the levels of sun_bins in ascending numerical order
+gad_data$sun_bins <- factor(gad_data$sun_bins, levels = c("(1,2]", "(2,3]", "(3,4]", "(4,5]", "(5,6]", "(6,7]"))
+
+# Calculate the number of entries and unique entries per bin
+entries_per_bin_sunlight <- gad_data %>%
+  group_by(sun_bins) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result
+print(entries_per_bin_sunlight)
+
+# Plot a discrete estimate graph measuring sunlight vs GAD-7 Sum Score with error bars
+plot_sunlight <- ggplot(gad_data, aes(x = sun_bins, y = gad7.sum_score)) +
+  stat_summary(fun = mean, geom = "point", size = 3, color = "skyblue") +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2) +
+  labs(x = "Sunlight Hours", y = "Mean GAD-7 Sum Score", title = "Mean GAD-7 Sum Score by Sunlight Hours") +
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white"),  # Set plot background to white
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, color = "black"),  # Adjusting text size and color for x-axis
+    axis.text.y = element_text(size = 8, color = "black")   # Adjusting text size and color for y-axis
+  )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad7_sunlight.png", plot_sunlight, width = 8, height = 6)
+
+##RAincloud Plot
+# Load required libraries
+library(ggplot2)
+
+# Define shades of blue for each bin
+blue_shades <- c("#1f77b4", "#aec7e8", "#3182bd", "#6baed6", "#9ecae1", "#c6dbef", "#deebf7", "#f7fbff")
+
+# Plot the rain cloud plot with half-violin shape
+plot_sunlight <- ggplot(gad_data, aes(x = sun_bins, y = gad7.sum_score, fill = as.factor(sun_bins))) +
+  geom_half_boxplot(width = 0.5, outlier.shape = NA, position = position_dodge(width = 0.6), color = "black") +  # Boxplot with adjusted dodge position
+  geom_half_violin(alpha = 0.7, position = position_dodge(width = 0.6), width = -0.5, color = "black") +  # Half-violin with adjusted dodge position and flipped width
+  scale_fill_manual(values = blue_shades) +  # Assign different shades of blue
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    axis.text.x = element_text(size = 8),  # Adjusting text size for x-axis
+    axis.text.y = element_text(size = 8)   # Adjusting text size for y-axis
+  ) +
+  labs(
+    title = "Sum Score per Sunlight Hours",
+    x = "Sunlight Hours",
+    y = "GAD-7 Sum Score"
+  )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad7_sunlight_raincloud.png", plot_sunlight, width = 8, height = 6)
+
+
+```
+
+#Sunshine hours-PHQ9
+```{r Clear global environment}
+# Load required libraries
+library(dplyr)
+library(ggplot2)
+
+#Bins per sunlight
+# Create sunlight bins with 1-hour intervals
+phq_data <- phq_data %>%
+  mutate(sun_bins = cut(phq9_average_sun_hr, breaks = c(1, 2, 3, 4, 5, 6, 7), include.lowest = TRUE))
+
+# Reorder the levels of sun_bins in ascending numerical order
+phq_data$sun_bins <- factor(phq_data$sun_bins, levels = c("(1,2]", "(2,3]", "(3,4]", "(4,5]", "(5,6]", "(6,7]"))
+
+# Calculate the number of entries and unique entries per bin
+entries_per_bin_sunlight <- phq_data %>%
+  group_by(sun_bins) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result
+print(entries_per_bin_sunlight)
+
+# Plot a discrete estimate graph measuring sunlight vs PHQ-9 Sum Score with error bars
+plot_sunlight <- ggplot(phq_data, aes(x = sun_bins, y = phq9.sum_score)) +
+  stat_summary(fun = mean, geom = "point", size = 3, color = "salmon") +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2) +
+  labs(x = "Sunlight Hours", y = "Mean PHQ-9 Sum Score", title = "Mean PHQ-9 Sum Score by Sunlight Hours") +
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white"),  # Set plot background to white
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, color = "black"),  # Adjusting text size and color for x-axis
+    axis.text.y = element_text(size = 8, color = "black")   # Adjusting text size and color for y-axis
+  )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq9_sunlight.png", plot_sunlight, width = 8, height = 6)
+
+##RAincloud plot
+#Raincloud plot
+library(ggplot2)
+
+# Define shades of red for each bin
+red_shades <- c("#FF0000", "#FF3333", "#FF6666", "#FF9999", "#FFCCCC", "#FF0000", "#CC0000")
+
+# Plot the rain cloud plot with half-violin shape
+plot_sunlight <- ggplot(phq_data, aes(x = sun_bins, y = phq9.sum_score, fill = as.factor(sun_bins))) +
+  geom_half_boxplot(width = 0.5, outlier.shape = NA, position = position_dodge(width = 0.6)) +  # Boxplot with adjusted dodge position
+  geom_half_violin(alpha = 0.7, position = position_dodge(width = 0.6), width = -0.5) +  # Half-violin with adjusted dodge position and flipped width
+  scale_fill_manual(values = red_shades) +  # Assign different shades of red
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    axis.text.x = element_text(size = 8),  # Adjusting text size for x-axis
+    axis.text.y = element_text(size = 8)   # Adjusting text size for y-axis
+  ) +
+  labs(
+    title = "Sum Score per Sunlight Hours",
+    x = "Sunlight Hours",
+    y = "PHQ-9 Sum Score"
+  )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq9_sunlight_raincloud.png", plot_sunlight, width = 8, height = 6)
+
+
+```
+#Plots per wave GAD7
+```{r Clear global environment}
+library(dplyr)
+library(ggplot2)
+
+# Filter data to include only waves 1 to 18
+gad_data_filtered <- gad_data %>%
+  filter(!is.na(wave_assigned) & wave_assigned != "wave19" & wave_assigned != "wave20" & wave_assigned != "wave21") 
+
+# Convert the wave_assigned column to numeric for correct sorting
+gad_data_filtered$wave_assigned <- gsub("wave", "", gad_data_filtered$wave_assigned)
+gad_data_filtered$wave_assigned <- as.numeric(gad_data_filtered$wave_assigned)
+
+# Arrange the data by wave in ascending order
+gad_data_filtered <- gad_data_filtered %>%
+  arrange(wave_assigned)
+
+# Calculate the number of entries and unique entries per wave
+entries_per_wave <- gad_data_filtered %>%
+  group_by(wave_assigned) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result
+print(entries_per_wave)
+
+# Calculate the mean sumscore per wave with error bars
+sumscore_per_wave <- gad_data_filtered %>%
+  group_by(wave_assigned) %>%
+  summarise(mean_sumscore = mean(gad7.sum_score, na.rm = TRUE),
+            sd_sumscore = sd(gad7.sum_score, na.rm = TRUE),
+            se_sumscore = sd_sumscore / sqrt(n()))
+
+# Plot the mean sumscore per wave with error bars
+plot_wave_sumscore <- ggplot(sumscore_per_wave, aes(x = factor(wave_assigned), y = mean_sumscore)) +
+  geom_point(size = 3, color = "skyblue") +  # Change point color to skyblue
+  geom_errorbar(aes(ymin = mean_sumscore - se_sumscore, ymax = mean_sumscore + se_sumscore), 
+                width = 0.2, color = "black") +  # Keep error bars black
+  labs(x = "Wave", y = "Mean GAD-7 Sum Score", title = "Mean GAD-7 Sum Score per Wave") +
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_line(color = "gray", size = 0.5),  # Major gridlines
+    panel.grid.minor = element_line(color = "gray", size = 0.2),  # Minor gridlines
+    axis.line = element_line(color = "black"),
+    axis.text = element_text(color = "black"),
+    axis.title = element_text(color = "black")
+  )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad7_wave_sumscore.png", plot_wave_sumscore)
+
+
+#RAincloud plot
+library(dplyr)
+library(ggplot2)
+library(ggdist)  # Required for raincloud plots
+
+# Filter data to include only waves 1 to 18
+gad_data_filtered <- gad_data %>%
+  filter(!is.na(wave_assigned) & wave_assigned != "wave19" & wave_assigned != "wave20" & wave_assigned != "wave21") 
+
+# Convert the wave_assigned column to numeric for correct sorting
+gad_data_filtered$wave_assigned <- gsub("wave", "", gad_data_filtered$wave_assigned)
+gad_data_filtered$wave_assigned <- as.numeric(gad_data_filtered$wave_assigned)
+
+# Arrange the data by wave in ascending order
+gad_data_filtered <- gad_data_filtered %>%
+  arrange(wave_assigned)
+
+# Calculate the sumscore per wave for raincloud plot
+sumscore_per_wave <- gad_data_filtered %>%
+  group_by(wave_assigned) %>%
+  reframe(sumscore = gad7.sum_score)
+
+# Define colors for each wave based on the provided specifications
+wave_colors <- c("1" = "#1f77b4", "14" = "#1f77b4", "15" = "#1f77b4", "16" = "#1f77b4",
+                 "2" = "#aec7e8", "3" = "#aec7e8", "4" = "#aec7e8", "5" = "#aec7e8", "6" = "#aec7e8",
+                 "17" = "#aec7e8", "18" = "#aec7e8",
+                 "7" = "#3182bd", "8" = "#3182bd", "9" = "#3182bd", "10" = "#3182bd",
+                 "11" = "#6baed6", "12" = "#6baed6", "13" = "#6baed6")
+
+# Plot the raincloud plot with a tiny gap between box plot and half violin within each wave
+plot_wave_sumscore <- ggplot(sumscore_per_wave, aes(x = factor(wave_assigned), y = sumscore, fill = factor(wave_assigned))) +
+  geom_half_violin(side = "r") +  # Default position of the half violin
+  geom_half_boxplot(center = TRUE, errorbar.draw = FALSE, width = 0.6, outlier.shape = NA, position = position_nudge(x = -0.1)) + # Shift the position of the box plot
+  scale_fill_manual(values = wave_colors) +  # Use defined colors
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    axis.text.x = element_text(size = 8),  # Adjusting text size for x-axis
+    axis.text.y = element_text(size = 8)   # Adjusting text size for y-axis
+  ) +
+  labs(
+    title = "GAD-7 Sum Score per Wave",
+    x = "Wave",
+    y = "GAD-7 Sum Score"
+  )
+
+# Save the raincloud plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad7_wave_sumscore_raincloud.png", plot_wave_sumscore, width = 8, height = 6)
+
+
+```
+
+
+#Plots per wave PHQ9
+```{r Clear global environment}
+library(dplyr)
+library(ggplot2)
+
+# Filter data to include only waves 1 to 18
+phq_data_filtered <- phq_data %>%
+  filter(!is.na(wave_assigned) & wave_assigned != "wave19" & wave_assigned != "wave20" & wave_assigned != "wave21") 
+
+# Convert the wave_assigned column to numeric for correct sorting
+phq_data_filtered$wave_assigned <- gsub("wave", "", phq_data_filtered$wave_assigned)
+phq_data_filtered$wave_assigned <- as.numeric(phq_data_filtered$wave_assigned)
+
+# Arrange the data by wave in ascending order
+phq_data_filtered <- phq_data_filtered %>%
+  arrange(wave_assigned)
+
+# Calculate the number of entries and unique entries per wave
+entries_per_wave <- phq_data_filtered %>%
+  group_by(wave_assigned) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result
+print(entries_per_wave)
+
+# Calculate the mean sumscore per wave with error bars
+sumscore_per_wave <- phq_data_filtered %>%
+  group_by(wave_assigned) %>%
+  summarise(mean_sumscore = mean(phq9.sum_score, na.rm = TRUE),
+            sd_sumscore = sd(phq9.sum_score, na.rm = TRUE),
+            se_sumscore = sd_sumscore / sqrt(n()))
+
+# Plot the mean sumscore per wave with error bars
+plot_wave_sumscore <- ggplot(sumscore_per_wave, aes(x = factor(wave_assigned), y = mean_sumscore)) +
+  geom_point(size = 3, color = "salmon") +  # Change point color to salmon
+  geom_errorbar(aes(ymin = mean_sumscore - se_sumscore, ymax = mean_sumscore + se_sumscore), 
+                width = 0.2, color = "black") +  # Change error bars to black
+  labs(x = "Wave", y = "Mean PHQ-9 Sum Score", title = "Mean PHQ-9 Sum Score per Wave") +
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    panel.background = element_rect(fill = "white"),
+    panel.grid.major = element_line(color = "gray", size = 0.5),  # Major gridlines
+    panel.grid.minor = element_line(color = "gray", size = 0.2),  # Minor gridlines
+    axis.line = element_line(color = "black"),
+    axis.text = element_text(color = "black"),
+    axis.title = element_text(color = "black")
+  )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq9_wave_sumscore.png", plot_wave_sumscore)
+
+```
+
+#Temp GAD7
+```{r Clear global environment}
+# Load required libraries
+library(dplyr)
+library(ggplot2)
+
+# Filter out NA and non-finite values for temperature and sum score
+gad_data <- gad_data %>%
+  filter(!is.na(gad7_average_temp) & is.finite(gad7.sum_score))
+
+# Create temperature bins
+gad_data <- gad_data %>%
+  mutate(temp_bins = cut(gad7_average_temp,
+                         breaks = c(-2, 0, 2, 4, 6, 8, 10, 14, 16, 18, 20, 22, Inf),  # Adjusted breaks for temperature
+                         labels = c("(-2,0]", "(0,2]", "(2,4]", "(4,6]", "(6,8]",
+                                    "(8,10]", "(10,14]", "(14,16]", "(16,18]", "(18,20]", "(20,22]", "(22+]"),  # Adjusted labels
+                         include.lowest = TRUE, right = FALSE))
+
+# Calculate the number of entries and unique entries per bin for temperature
+entries_per_bin_temp <- gad_data %>%
+  group_by(temp_bins) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result for temperature
+print(entries_per_bin_temp)
+
+# Define shades of blue for each bin
+blue_shades <- c("#1f77b4", "#3182bd", "#6baed6", "#9ecae1", "#c6dbef", "#deebf7", "#f7fbff", "#aec7e8", "#bdd7e7", "#d0e1f0", "#e0ecf4", "#f0f9ff")
+
+# Plot a discrete estimate graph measuring temperature vs GAD-7 Sum Score with error bars
+plot_temp <- ggplot(gad_data, aes(x = temp_bins, y = gad7.sum_score)) +
+  stat_summary(fun = mean, geom = "point", size = 3, color = "skyblue") +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2) +
+  labs(x = "Temperature (°C)", y = "Mean GAD-7 Sum Score", title = "Mean GAD-7 Sum Score by Temperature") +
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, color = "black"),
+    axis.text.y = element_text(size = 8, color = "black")
+  )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad7_temp.png", plot_temp, width = 8, height = 6)
+
+#Raincloud plot
+# Define shades of blue for each bin
+blue_shades <- c("#1f77b4", "#3182bd", "#6baed6", "#9ecae1", "#c6dbef", "#deebf7", "#f7fbff", "#aec7e8", "#bdd7e7", "#d0e1f0", "#e0ecf4", "#f0f9ff")
+
+# Plot the rain cloud plot with half-violin shape
+plot_temp <- ggplot(gad_data, aes(x = temp_bins, y = gad7.sum_score, fill = as.factor(temp_bins))) +
+  geom_half_boxplot(width = 0.5, outlier.shape = NA, position = position_dodge(width = 0.6)) +  # Boxplot with adjusted dodge position
+  geom_half_violin(alpha = 0.7, position = position_dodge(width = 0.6), width = -0.5) +  # Half-violin with adjusted dodge position and flipped width
+  scale_fill_manual(values = blue_shades) +  # Assign different shades of blue
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    axis.text.x = element_text(size = 8),  # Adjusting text size for x-axis
+    axis.text.y = element_text(size = 8)   # Adjusting text size for y-axis
+  ) +
+  labs(
+    title = "Sum Score per Average Daily Temperature °C",
+    x = "Average Daily Temperature (°C) ",
+    y = "GAD-7 Sum Score"
+  )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad7_temp_raincloud.png", plot_temp, width = 8, height = 6)
+
+
+
+```
+
+#Temp-phq9
+```{r Clear global environment}
+# Load required libraries
+library(dplyr)
+library(ggplot2)
+
+# Filter out NA and non-finite values for temperature and sum score
+phq_data <- phq_data %>%
+  filter(!is.na(phq9_average_temp) & is.finite(phq9.sum_score))
+
+# Create temperature bins
+phq_data <- phq_data %>%
+  mutate(temp_bins = cut(phq9_average_temp,
+                         breaks = c(-2, 0, 2, 4, 6, 8, 10, 14, 16, 18, 20, 22, Inf),  # Adjusted breaks for temperature
+                         labels = c("(-2,0]", "(0,2]", "(2,4]", "(4,6]", "(6,8]",
+                                    "(8,10]", "(10,14]", "(14,16]", "(16,18]", "(18,20]", "(20,22]", "(22+]"),  # Adjusted labels
+                         include.lowest = TRUE, right = FALSE))
+
+# Calculate the number of entries and unique entries per bin for temperature
+entries_per_bin_temp <- phq_data %>%
+  group_by(temp_bins) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result for temperature
+print(entries_per_bin_temp)
+
+# Define shades of red for each bin
+red_shades <- c("#FF0000", "#FF3333", "#FF6666", "#FF9999", "#FFCCCC", "#FF8080", "#FF4D4D", "#FF1A1A", "#CC0000", "#990000", "#FF6666", "#FF9999")
+
+
+# Plot a discrete estimate graph measuring temperature vs PHQ-9 Sum Score with error bars
+plot_temp <- ggplot(phq_data, aes(x = temp_bins, y = phq9.sum_score)) +
+  stat_summary(fun = mean, geom = "point", size = 3, color = "red") +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2) +
+  labs(x = "Temperature (°C)", y = "Mean PHQ-9 Sum Score", title = "Mean PHQ-9 Sum Score by Temperature") +
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, color = "black"),
+    axis.text.y = element_text(size = 8, color = "black")
+  )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq9_temp.png", plot_temp, width = 8, height = 6)
+
+
+# Plot the estimates with half-violin shape
+plot_rain_temp <- ggplot(phq_data, aes(x = temp_bins, y = phq9.sum_score, fill = as.factor(temp_bins))) +
+  geom_half_boxplot(width = 0.5, outlier.shape = NA, position = position_dodge(width = 0.6)) +  # Boxplot with adjusted dodge position
+  geom_half_violin(alpha = 0.7, position = position_dodge(width = 0.6), width = -0.5) +  # Half-violin with adjusted dodge position and flipped width
+  scale_fill_manual(values = red_shades) +  # Assign different shades of red
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    axis.text.x = element_text(size = 8),  # Adjusting text size for x-axis
+    axis.text.y = element_text(size = 8)   # Adjusting text size for y-axis
+  ) +
+  labs(
+    title = "Sum Score per Average Daily Temperature (°C) ",
+    x = "Average Daily Temperature  (°C)",
+    y = "PHQ-9 Sum Score"
+  )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq9_temp_raincloud.png", plot_rain_temp, width = 8, height = 6)
+
+```
+
+
+#Precipitation-GAD7
+```{r Clear global environment}
+# Load required libraries
+library(dplyr)
+library(ggplot2)
+
+# Assuming gad_data is loaded or created previously
+
+# Filter out NA and non-finite values for rainfall
+gad_data <- gad_data %>%
+  filter(!is.na(gad7_daily_precipitation) & is.finite(gad7.sum_score))
+
+# Create rainfall bins
+gad_data <- gad_data %>%
+  mutate(rain_bins = cut(gad7_daily_precipitation,
+                         breaks = c(0, 2, 4, 6, 8, 10, 14, Inf),
+                         labels = c("(0,2]", "(2,4]", "(4,6]", "(6,8]", "(8,10]",
+                                    "(10,14]", "(14+]"),
+                         include.lowest = TRUE, right = FALSE))
+
+# Calculate the number of entries and unique entries per bin for rainfall
+entries_per_bin_rain <- gad_data %>%
+  group_by(rain_bins) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result for rainfall
+print(entries_per_bin_rain)
+
+# Plot a discrete estimate graph measuring rainfall vs GAD-7 Sum Score with error bars
+plot_rainfall <- ggplot(gad_data, aes(x = rain_bins, y = gad7.sum_score)) +
+  stat_summary(fun = mean, geom = "point", size = 3, color = "skyblue") +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2) +
+  labs(x = "Rainfall (mm)", y = "Mean GAD-7 Sum Score", title = "Mean GAD-7 Sum Score by Rainfall") +
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, color = "black"),
+    axis.text.y = element_text(size = 8, color = "black")
+  )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad7_rainfall.png", plot_rainfall, width = 8, height = 6)
+
+#Raincloud plot
+library(gghalves)
+
+# Define shades of blue for each bin
+blue_shades <- c("#1f77b4", "#3182bd", "#6baed6", "#9ecae1", "#c6dbef", "#deebf7", "#f7fbff", "#aec7e8", "#bdd7e7", "#d0e1f0", "#e0ecf4", "#f0f9ff")
+
+# Plot the rain cloud plot with half-violin shape
+plot_rain <- ggplot(gad_data, aes(x = rain_bins, y = gad7.sum_score, fill = as.factor(rain_bins))) +
+  geom_half_boxplot(width = 0.5, outlier.shape = NA, position = position_dodge(width = 0.6)) +
+  geom_half_violin(alpha = 0.7, position = position_dodge(width = 0.6), width = -0.5) +
+  scale_fill_manual(values = blue_shades) +
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    axis.text.x = element_text(size = 8),
+    axis.text.y = element_text(size = 8)
+  ) +
+  labs(
+    title = "Sum Score per Average Daily Rainfall (mm)",
+    x = "Average Daily Rainfall (mm) ",
+    y = "GAD-7 Sum Score"
+  )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/gad7_rain_raincloud.png", plot_rain, width = 8, height = 6)
+
+
+```
+
+
+#Precipitation-PHQ9
+```{r Clear global environment}
+# Load required libraries
+library(dplyr)
+library(ggplot2)
+
+# Filter out NA and non-finite values for rainfall
+phq_data <- phq_data %>%
+  filter(!is.na(phq9_daily_precipitation) & is.finite(phq9.sum_score))
+
+# Create rainfall bins
+phq_data <- phq_data %>%
+  mutate(rain_bins = cut(phq9_daily_precipitation,
+                         breaks = c(0, 2, 4, 6, 8, 10, 14, Inf),  # Adjusted breaks for rainfall
+                         labels = c("(0,2]", "(2,4]", "(4,6]", "(6,8]", "(8,10]",
+                                    "(10,14]", "(14+]"),  # Adjusted labels
+                         include.lowest = TRUE, right = FALSE))
+
+# Calculate the number of entries and unique entries per bin for rainfall
+entries_per_bin_rain <- phq_data %>%
+  group_by(rain_bins) %>%
+  summarise(entries = n(), unique_entries = n_distinct(ID))
+
+# Print the result for rainfall
+print(entries_per_bin_rain)
+
+# Plot a discrete estimate graph measuring rainfall vs PHQ-9 Sum Score with error bars
+plot_rainfall <- ggplot(phq_data, aes(x = rain_bins, y = phq9.sum_score)) +
+  stat_summary(fun = mean, geom = "point", size = 3, color = "salmon") +
+  stat_summary(fun.data = "mean_se", geom = "errorbar", width = 0.2) +
+  labs(x = "Rainfall (mm)", y = "Mean PHQ-9 Sum Score", title = "Mean PHQ-9 Sum Score by Rainfall") +
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white"),  # Set plot background to white
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, color = "black"),  # Adjusting text size and color for x-axis
+    axis.text.y = element_text(size = 8, color = "black")   # Adjusting text size and color for y-axis
+  )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq9_rainfall.png", plot_rainfall, width = 8, height = 6)
+
+# Load required libraries
+library(ggplot2)
+library(gghalves)
+
+# Define shades of red for each bin
+red_shades <- c("#FF0000", "#FF3333", "#FF6666", "#FF9999", "#FFCCCC", "#FF8080", "#FF4D4D", "#FF1A1A", "#CC0000", "#FF6666", "#990000")
+
+# Plot the rain cloud plot with half-violin shape
+plot_temp <- ggplot(phq_data, aes(x = rain_bins, y = phq9.sum_score, fill = as.factor(rain_bins))) +
+  geom_half_boxplot(width = 0.5, outlier.shape = NA, position = position_dodge(width = 0.6)) +  # Boxplot with adjusted dodge position
+  geom_half_violin(alpha = 0.7, position = position_dodge(width = 0.6), width = -0.5) +  # Half-violin with adjusted dodge position and flipped width
+  scale_fill_manual(values = red_shades) +  # Assign different shades of red
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "white"),
+    axis.text.x = element_text(size = 8),  # Adjusting text size for x-axis
+    axis.text.y = element_text(size = 8)   # Adjusting text size for y-axis
+  ) +
+  labs(
+    title = "Sum Score per Average Daily Rainfall (mm)",
+    x = "Average Daily Rainfall (mm)",
+    y = "PHQ-9 Sum Score"
+  )
+
+# Save the plot
+ggsave("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/best_data/phq9_rain_raincloud.png", plot_temp, width = 8, height = 6)
+
+```
+
+#Regression winter vs lockdown
+```{r Clear global environment}
+# Assuming you have already loaded your dataset and imported necessary libraries
+# First, create a new variable indicating whether the wave occurred during lockdown or winter
+phq_data$lockdown <- ifelse(phq_data$wave_assigned %in% c("wave1", "wave12", "wave13"), "lockdown", "non-lockdown")
+phq_data$winter <- ifelse(phq_data$wave_assigned %in% c("wave10", "wave11", "wave12", "wave13"), "winter", "non-winter")
+
+# Then, calculate the average sum scores for each wave
+lockdown_avg <- aggregate(phq9.sum_score ~ lockdown, data = phq_data, FUN = mean)
+winter_avg <- aggregate(phq9.sum_score ~ winter, data = phq_data, FUN = mean)
+
+# Now, let's run a regression analysis
+model <- lm(phq9.sum_score_baseline ~ lockdown + winter, data = phq_data)
+
+# Print summary of the regression model
+summary(model)
+
+# Assuming you have already loaded your dataset and imported necessary libraries
+# First, create a new variable indicating whether the wave occurred during lockdown or winter
+gad_data$lockdown <- ifelse(gad_data$wave_assigned %in% c("wave1", "wave12", "wave13"), "lockdown", "non-lockdown")
+gad_data$winter <- ifelse(gad_data$wave_assigned %in% c("wave10", "wave11", "wave12", "wave13"), "winter", "non-winter")
+
+# Then, calculate the average sum scores for each wave
+lockdown_avg <- aggregate(gad_data$gad7.sum_score ~ gad_data$lockdown, data = gad_data, FUN = mean)
+winter_avg <- aggregate(gad_data$gad7.sum_score ~ gad_data$winter, data = gad_data, FUN = mean)
+
+# Now, let's run a regression analysis
+model <- lm(gad7.sum_score ~ lockdown + winter, data = gad_data)
+
+# Print summary of the regression model
+summary(model)
+
+
+
+
+#########
+# Load required libraries
+library(dplyr)
+
+# Assuming you have a dataset named gad_data with columns:
+# gad7_sum_score: GAD-7 sum scores
+# wave_assigned: Assigned wave for each observation
+
+# Create indicator variables for winter waves 10-13, summer lockdown (wave 1), and winter lockdown waves 12-13 based on wave_assigned
+gad_data <- gad_data %>%
+  mutate(
+    winter_waves = ifelse(wave_assigned %in% c(10, 11, 12, 13), 1, 0),
+    summer_lockdown = ifelse(wave_assigned == 1, 1, 0),
+    winter_lockdown = ifelse(wave_assigned %in% c(12, 13), 1, 0)
+  )
+
+# Perform regression analysis
+regression_model <- lm(gad7_sum_score ~ winter_waves + summer_lockdown + winter_lockdown, data = gad_data)
+
+# View summary of regression results
+summary(regression_model)
+
+# Optionally, you can test for overall significance of the model
+# using an ANOVA test
+anova(regression_model)
+
+# Optionally, you can perform additional diagnostics such as
+# checking for multicollinearity and homoscedasticity
+# For example, to check for multicollinearity:
+library(car)  # Load car package for VIF calculation
+vif(regression_model)
+
+```
+
+Clear global environment prior to initiation
+```{r Clear global environment}
+remove(list = ls())
+```
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

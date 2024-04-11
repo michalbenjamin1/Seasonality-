@@ -1,0 +1,351 @@
+---
+title: "Defining sample groups"
+author: "Michal Benjamin"
+date: "2024-02-26"
+output: html_document
+---
+#Calculate how many entries for each wave of data
+```{r setup, include=FALSE}
+# Load the data frame from the RDS file
+gad_data <- readRDS("/seasonal_internalising_2024/gad_clinical_weather_saved.rds")
+phq_data <- readRDS("/seasonal_internalising_2024/phq_clinical_weather_saved.rds")
+
+# Calculate the number of non-NA values for each column in gad_data
+non_na_counts_gad <- colSums(!is.na(gad_data))
+
+# Print the result for gad_data
+print(non_na_counts_gad)
+
+# Calculate the number of non-NA values for each column in phq_data
+non_na_counts_phq <- colSums(!is.na(phq_data))
+
+# Print the result for phq_data
+print(non_na_counts_phq)
+
+```
+
+##Asigning date waves
+#Gad7
+```{r setup, include=FALSE}
+assign_wave <- function(start_date, end_date) {
+  # Convert start_date to Date object
+  start_date <- as.Date(start_date)
+
+  # Check if start_date is NA
+  if (is.na(start_date)) {
+    return(NA)
+  }
+  
+  # Define wave schedules for Set A
+  set_a_waves <- list(
+    wave1 = c("2020-05-19", "2020-05-26"),
+    wave3 = c("2020-06-16", "2020-06-23"),
+    wave5 = c("2020-07-14", "2020-07-21"),
+    wave7 = c("2020-08-25", "2020-09-15"),
+    wave9 = c("2020-10-20", "2020-11-10"),
+    wave11 = c("2020-12-15", "2021-01-05"),
+    wave13 = c("2021-02-09", "2021-03-02"),
+    wave15 = c("2021-04-06", "2021-04-27"),
+    wave17 = c("2021-06-01", "2021-06-22")
+  )
+  
+  # Define wave schedules for Set B
+  set_b_waves <- list(
+    wave2 = c("2020-06-02", "2020-06-09"),
+    wave4 = c("2020-06-30", "2020-07-07"),
+    wave6 = c("2020-07-28", "2020-08-04"),
+    wave8 = c("2020-09-22", "2020-10-13"),
+    wave10 = c("2020-11-17", "2020-12-08"),
+    wave12 = c("2021-01-12", "2021-02-02"),
+    wave14 = c("2021-03-09", "2021-03-30"),
+    wave16 = c("2021-05-04", "2021-05-25"),
+    wave18 = c("2021-06-29", "2021-07-20"),
+    wave19 = c("2021-07-27", "2021-08-24"),
+    wave20 = c("2021-10-26", "2021-11-23"),
+    wave21 = c("2022-01-25", "2022-02-22"),
+    wave22 = c("2022-04-22", "2022-05-24"),
+    wave23 = c("2022-07-26", "2022-08-23"),
+    wave24 = c("2022-10-25", "2022-11-22")
+  )
+  
+  # Check if the start_date falls into any wave in Set A
+  for (wave_name in names(set_a_waves)) {
+    wave_start_date <- as.Date(set_a_waves[[wave_name]][1])
+    wave_end_date <- as.Date(set_a_waves[[wave_name]][2])
+    if (!is.na(wave_start_date) && !is.na(wave_end_date) && start_date >= wave_start_date && start_date <= wave_end_date) {
+      print(paste("Assigned to Set A wave:", wave_name))
+      return(wave_name)
+    }
+  }
+  
+  # Check if the start_date falls into any wave in Set B
+  for (wave_name in names(set_b_waves)) {
+    wave_start_date <- as.Date(set_b_waves[[wave_name]][1])
+    wave_end_date <- as.Date(set_b_waves[[wave_name]][2])
+    if (!is.na(wave_start_date) && !is.na(wave_end_date) && start_date >= wave_start_date && start_date <= wave_end_date) {
+      print(paste("Assigned to Set B wave:", wave_name))
+      return(wave_name)
+    }
+  }
+  
+  return(NA)  # If date doesn't fall into any wave, return NA
+}
+
+# Apply the assign_wave function to each row of phq_data
+gad_data$wave_assigned <- lapply(X = gad_data$gad7.startDate, FUN = function(x){
+  assign_wave(start_date = x, end_date = NULL)
+})
+#########
+# Apply the assign_wave function to each row of phq_data
+gad_data$wave_assigned <- mapply(assign_wave, gad_data$gad7.startDate, gad_data$gad7.endDate)
+
+# Count the number of people in each wave
+wave_counts <- table(gad_data$wave_assigned, useNA = "always")
+
+# Display the counts
+print(wave_counts)
+
+
+```
+
+#Phq9
+```{r setup, include=FALSE}
+assign_wave <- function(start_date, end_date) {
+  # Convert start_date to Date object
+  start_date <- as.Date(start_date)
+
+  # Check if start_date is NA
+  if (is.na(start_date)) {
+    return(NA)
+  }
+  
+  # Define wave schedules for Set A
+  set_a_waves <- list(
+    wave1 = c("2020-05-19", "2020-05-26"),
+    wave3 = c("2020-06-16", "2020-06-23"),
+    wave5 = c("2020-07-14", "2020-07-21"),
+    wave7 = c("2020-08-25", "2020-09-15"),
+    wave9 = c("2020-10-20", "2020-11-10"),
+    wave11 = c("2020-12-15", "2021-01-05"),
+    wave13 = c("2021-02-09", "2021-03-02"),
+    wave15 = c("2021-04-06", "2021-04-27"),
+    wave17 = c("2021-06-01", "2021-06-22")
+  )
+  
+  # Define wave schedules for Set B
+  set_b_waves <- list(
+    wave2 = c("2020-06-02", "2020-06-09"),
+    wave4 = c("2020-06-30", "2020-07-07"),
+    wave6 = c("2020-07-28", "2020-08-04"),
+    wave8 = c("2020-09-22", "2020-10-13"),
+    wave10 = c("2020-11-17", "2020-12-08"),
+    wave12 = c("2021-01-12", "2021-02-02"),
+    wave14 = c("2021-03-09", "2021-03-30"),
+    wave16 = c("2021-05-04", "2021-05-25"),
+    wave18 = c("2021-06-29", "2021-07-20"),
+    wave19 = c("2021-07-27", "2021-08-24"),
+    wave20 = c("2021-10-26", "2021-11-23"),
+    wave21 = c("2022-01-25", "2022-02-22"),
+    wave22 = c("2022-04-22", "2022-05-24"),
+    wave23 = c("2022-07-26", "2022-08-23"),
+    wave24 = c("2022-10-25", "2022-11-22")
+  )
+  
+  # Check if the start_date falls into any wave in Set A
+  for (wave_name in names(set_a_waves)) {
+    wave_start_date <- as.Date(set_a_waves[[wave_name]][1])
+    wave_end_date <- as.Date(set_a_waves[[wave_name]][2])
+    if (!is.na(wave_start_date) && !is.na(wave_end_date) && start_date >= wave_start_date && start_date <= wave_end_date) {
+      print(paste("Assigned to Set A wave:", wave_name))
+      return(wave_name)
+    }
+  }
+  
+  # Check if the start_date falls into any wave in Set B
+  for (wave_name in names(set_b_waves)) {
+    wave_start_date <- as.Date(set_b_waves[[wave_name]][1])
+    wave_end_date <- as.Date(set_b_waves[[wave_name]][2])
+    if (!is.na(wave_start_date) && !is.na(wave_end_date) && start_date >= wave_start_date && start_date <= wave_end_date) {
+      print(paste("Assigned to Set B wave:", wave_name))
+      return(wave_name)
+    }
+  }
+  
+  return(NA)  # If date doesn't fall into any wave, return NA
+}
+
+# Apply the assign_wave function to each row of phq_data
+phq_data$wave_assigned <- lapply(X = phq_data$phq9.startDate, FUN = function(x){
+  assign_wave(start_date = x, end_date = NULL)
+})
+
+```
+
+#PHQ9 Sex
+```{r setup, include=FALSE}
+# Load the data frame from the RDS file
+data <- readRDS("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/final_data/clinical_demographic_merge_final.rds")
+
+# Calculate the number of non-NA entries in gad7.sum_score for each category in the sex column
+non_na_counts <- aggregate(phq9.sum_score_baseline ~ sex, data = data, FUN = function(x) sum(!is.na(x)))
+
+# Print the result
+print(non_na_counts)
+
+# Calculate the number of non-NA entries in gad7.sum_score_fua for each category in the sex column
+non_na_counts <- aggregate(phq9.sum_score_fua ~ sex, data = data, FUN = function(x) sum(!is.na(x)))
+
+# Print the result
+print(non_na_counts)
+
+# Calculate the number of non-NA entries in gad7.sum_score_fua for each category in the sex column
+non_na_counts <- aggregate(phq9.sum_score_fub ~ sex, data = data, FUN = function(x) sum(!is.na(x)))
+
+# Print the result
+print(non_na_counts)
+
+# Calculate the number of non-NA entries in gad7.sum_score_fua for each category in the sex column
+non_na_counts <- aggregate(phq9.sum_score_fua_o ~ sex, data = data, FUN = function(x) sum(!is.na(x)))
+
+# Print the result
+print(non_na_counts)
+```
+
+#Gad7 past MDD
+```{r setup, include=FALSE}
+# Load the data frame from the RDS file
+data <- readRDS("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/final_data/clinical_demographic_merge_final.rds")
+
+# Calculate the number of non-NA entries in gad7.sum_score for each category in the sex column
+non_na_counts <- aggregate(gad7.sum_score ~ cidid.mdd_diagnosis, data = data, FUN = function(x) sum(!is.na(x)))
+
+# Print the result
+print(non_na_counts)
+
+# Calculate the number of non-NA entries in gad7.sum_score_fua for each category in the sex column
+non_na_counts <- aggregate(gad7.sum_score_fua ~ cidid.mdd_diagnosis, data = data, FUN = function(x) sum(!is.na(x)))
+
+# Print the result
+print(non_na_counts)
+
+# Calculate the number of non-NA entries in gad7.sum_score_fua for each category in the sex column
+non_na_counts <- aggregate(gad7.sum_score_fub ~ cidid.mdd_diagnosis, data = data, FUN = function(x) sum(!is.na(x)))
+
+# Print the result
+print(non_na_counts)
+
+# Calculate the number of non-NA entries in gad7.sum_score_fua for each category in the sex column
+non_na_counts <- aggregate(gad7.sum_score_fua_o ~ cidid.mdd_diagnosis, data = data, FUN = function(x) sum(!is.na(x)))
+
+# Print the result
+print(non_na_counts)
+```
+
+#PHQ9 past MDD
+```{r setup, include=FALSE}
+# Load the data frame from the RDS file
+data <- readRDS("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/final_data/clinical_demographic_merge_final.rds")
+
+# Calculate the number of non-NA entries in gad7.sum_score for each category in the sex column
+non_na_counts <- aggregate(phq9.sum_score_baseline ~ cidid.mdd_diagnosis, data = data, FUN = function(x) sum(!is.na(x)))
+
+# Print the result
+print(non_na_counts)
+
+# Calculate the number of non-NA entries in gad7.sum_score_fua for each category in the sex column
+non_na_counts <- aggregate(phq9.sum_score_fua ~ cidid.mdd_diagnosis, data = data, FUN = function(x) sum(!is.na(x)))
+
+# Print the result
+print(non_na_counts)
+
+# Calculate the number of non-NA entries in gad7.sum_score_fua for each category in the sex column
+non_na_counts <- aggregate(phq9.sum_score_fub ~ cidid.mdd_diagnosis, data = data, FUN = function(x) sum(!is.na(x)))
+
+# Print the result
+print(non_na_counts)
+
+# Calculate the number of non-NA entries in gad7.sum_score_fua for each category in the sex column
+non_na_counts <- aggregate(phq9.sum_score_fua_o ~ cidid.mdd_diagnosis, data = data, FUN = function(x) sum(!is.na(x)))
+
+# Print the result
+print(non_na_counts)
+```
+
+#GAD7 past GAD
+```{r setup, include=FALSE}
+# Load the necessary library
+library(dplyr)
+
+# Load the data frame from the RDS file
+data <- readRDS("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/final_data/clinical_demographic_merge_final.rds")
+
+# Define the variables you want to analyze
+variables <- c("gad7.sum_score", "gad7.sum_score_fua", "gad7.sum_score_fub", "gad7.sum_score_fua_o")
+
+# Define a function to calculate non-NA counts for each variable
+calculate_non_na_counts <- function(data, variable) {
+  data %>%
+    group_by(cidia.diagnosis) %>%
+    summarise(non_na_count = sum(!is.na({{ variable }})))
+}
+
+# Loop through the variables and calculate non-NA counts for each
+for (variable in variables) {
+  # Get the variable name without the prefix
+  var_title <- gsub("gad7.sum_score", "", variable)
+  cat("Non-NA counts for", var_title, "by cidia.diagnosis:\n")
+  print(calculate_non_na_counts(data, !!sym(variable)))
+  cat("\n")
+}
+
+```
+
+#PHQ9 past GAD
+```{r setup, include=FALSE}
+# Load the necessary library
+library(dplyr)
+
+# Load the data frame from the RDS file
+data <- readRDS("/users/k21043154/project/seasonal_internalising_2024/data/phenotypic/clinical/final_data/clinical_demographic_merge_final.rds")
+
+# Define the variables you want to analyze
+variables <- c("phq9.sum_score_baseline", "phq9.sum_score_fua", "phq9.sum_score_fub", "phq9.sum_score_fua_o")
+
+# Define a function to calculate non-NA counts for each variable
+calculate_non_na_counts <- function(data, variable) {
+  data %>%
+    group_by(cidia.diagnosis) %>%
+    summarise(non_na_count = sum(!is.na({{ variable }})))
+}
+
+# Loop through the variables and calculate non-NA counts for each
+for (variable in variables) {
+  # Get the variable name without the prefix
+  var_title <- gsub("phq9.sum_score_baseline", "", variable)
+  cat("Non-NA counts for", var_title, "by ccidia.diagnosis:\n")
+  print(calculate_non_na_counts(data, !!sym(variable)))
+  cat("\n")
+}
+
+```
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
